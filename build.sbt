@@ -20,3 +20,5 @@ testOptions in Test += Tests.Argument("junitxml", "console")
 packSettings
 
 packMain := Map("secpwd" -> "de.choffmeister.secpwd.Main")
+
+EclipseKeys.withSource := true
