@@ -1,21 +1,31 @@
 package de.choffmeister.secpwd
 
+import java.util.Date
 import java.util.UUID.randomUUID
 
 object Main extends App {
-  val pwd1 = PasswordEntry(randomUUID, "google", "Google Account", "SeCuRePwD",
+  val pwd1 = PasswordEntry("google", now, "Google Account", "SeCuRePwD",
     userName = "unknownuser@googlemail.com",
-    customFields = Seq(
+    customFields = List(
       CustomEntry(randomUUID, "Additional Info", "Valid for all my Google accounts")
     )
   )
 
-  val pwd2 = PasswordEntry(randomUUID, "battlenet", "Battle.net", "SeCuRePwD2",
+  val pwd2 = PasswordEntry("battlenet", now, "Battle.net", "SeCuRePwD2",
     userName = "unknownuser2@battle.net",
     description = "My gaming account at Blizzard"
   )
 
-  val root = RootEntry(randomUUID, Seq(pwd1, pwd2))
+  val db1 = Database.create()
+  println("DB1: " + db1)
+  val db2 = Database.appendPassword(db1, pwd1)
+  println("DB2: " + db2)
+  val db3 = Database.appendPassword(db2, pwd2)
+  println("DB3: " + db3)
+  val db4 = Database.dropPasswordById(db3, pwd1.id)
+  println("DB4: " + db4)
+  val db5 = Database.modifyPasswordValue(db4, "battlenet", "APPLE")
+  println("DB5: " + db5)
 
-  println(root)
+  def now: Date = new Date()
 }
