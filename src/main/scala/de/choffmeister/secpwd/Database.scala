@@ -3,6 +3,7 @@ package de.choffmeister.secpwd
 import java.util.Date
 import java.util.UUID
 import java.io.{InputStream, OutputStream}
+import java.io.{File, FileInputStream, FileOutputStream}
 import de.choffmeister.secpwd.BinaryReaderWriter._
 
 case class Database(
@@ -78,6 +79,26 @@ object Database {
       input.readString(),
       input.readString()
     )
+  }
+
+  def serializeFromFile(path: File, db: Database): Unit = {
+    val fs = new FileOutputStream(path)
+
+    try {
+      serializeDatabase(fs, db)
+    } finally {
+      fs.close()
+    }
+  }
+
+  def deserializeToFile(path: File): Database = {
+    val fs = new FileInputStream(path)
+
+    try {
+      deserializeDatabase(fs)
+    } finally {
+      fs.close()
+    }
   }
 }
 
