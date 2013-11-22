@@ -2,30 +2,19 @@ package de.choffmeister.secpwd
 
 import java.util.Date
 import java.util.UUID.randomUUID
+import org.rogach.scallop._
 
-object Main extends App {
-  val pwd1 = PasswordEntry("google", now, "Google Account", "SeCuRePwD",
-    userName = "unknownuser@googlemail.com",
-    customFields = List(
-      CustomEntry(randomUUID, "Additional Info", "Valid for all my Google accounts")
-    )
-  )
+object Main {
+  def main(args: Array[String]): Unit = {
+    execute(new CommandLineInterface(args))
+  }
 
-  val pwd2 = PasswordEntry("battlenet", now, "Battle.net", "SeCuRePwD2",
-    userName = "unknownuser2@battle.net",
-    description = "My gaming account at Blizzard"
-  )
+  def execute(cli: CommandLineInterface): Unit = cli.subcommand match {
+    case _ =>
+      cli.printHelp()
+  }
 
-  val db1 = Database.create()
-  println("DB1: " + db1)
-  val db2 = Database.appendPassword(db1, pwd1)
-  println("DB2: " + db2)
-  val db3 = Database.appendPassword(db2, pwd2)
-  println("DB3: " + db3)
-  val db4 = Database.dropPasswordById(db3, pwd1.id)
-  println("DB4: " + db4)
-  val db5 = Database.modifyPasswordValue(db4, "battlenet", "APPLE")
-  println("DB5: " + db5)
-
-  def now: Date = new Date()
+  class CommandLineInterface(val arguments: Seq[String]) extends ScallopConf(arguments) {
+    version(s"secpwd v0.0.0 (c) 2013 Christian Hoffmeister <mail@choffmeister.de>")
+  }
 }
