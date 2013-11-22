@@ -4,6 +4,7 @@ import org.specs2.mutable._
 import org.specs2.runner.JUnitRunner
 import org.junit.runner.RunWith
 import java.util.Date
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
 @RunWith(classOf[JUnitRunner])
 class DatabaseSpec extends Specification {
@@ -68,5 +69,20 @@ class DatabaseSpec extends Specification {
     db5.passwords(0).id == pwd2.id
     db5.passwords(0).password === "password2-new"
     db4.passwords === List(pwd3, pwd2)
+  }
+
+  "deseralize and serialize databases" in {
+    val db1 = Database.create()
+    val pwd1 = PasswordEntry("service1", new Date(0), "Service #1", "password1")
+    val db2 = Database.addPassword(db1, pwd1)
+    val pwd2 = PasswordEntry("service2", new Date(1), "Service #2", "password2")
+    val db3 = Database.addPassword(db2, pwd2)
+
+    val output = new ByteArrayOutputStream()
+    Database.serializeDatabase(output, db3)
+    val input = new ByteArrayInputStream(output.toByteArray)
+    val db4 = Database.deserializeDatabase(input)
+
+    db4 === db3
   }
 }
