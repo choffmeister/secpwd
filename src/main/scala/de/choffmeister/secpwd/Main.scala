@@ -39,12 +39,13 @@ object Main {
       println(s"id:        ${db.id}")
       println(s"timestamp: ${db.timeStamp}")
       for (pwd <- db.passwords) {
-        println(s"[${pwd.id}] ${pwd.name} -> ${pwd.password}")
+        println(s"[${pwd.id}] ${pwd.name} -> ${pwd.password} (${PasswordUtils.getBitEntropy(pwd.password.toCharArray)} Bits)")
       }
     case Some(cli.add) =>
       val pp = getPassphrase()
       val db1 = Database.deserialize(pp, path)
-      val db2 = Database.addPassword(db1, PasswordEntry(cli.add.id(), new Date(), cli.add.name(), cli.add.password()))
+      val pwd = PasswordUtils.generate(32, PasswordCharacters(true, true, true, false))
+      val db2 = Database.addPassword(db1, PasswordEntry(cli.add.id(), new Date(), cli.add.name(), pwd.mkString("")))
       Database.serialize(pp, path, db2)
     case Some(cli.remove) =>
       val pp = getPassphrase()
@@ -63,7 +64,6 @@ object Main {
     val add = new Subcommand("add") {
       val id = trailArg[String]("id")
       val name = trailArg[String]("name")
-      val password = trailArg[String]("password")
     }
     val remove = new Subcommand("rm") {
       val id = trailArg[String]("id")
