@@ -17,25 +17,40 @@ object Main {
     }
   }
 
+  def getPassphrase(): Array[Char] = {
+    val console = Option(System.console())
+    console match {
+      case Some(c) => Option(c.readPassword("Passphrase: ")) match {
+        case Some(pp) => pp
+        case _ => throw new Exception("Need a passphrase")
+      }
+      case _ => throw new Exception("Need a passphrase")
+    }
+  }
+
   def execute(cli: CommandLineInterface): Unit = cli.subcommand match {
     case Some(cli.init) =>
+      val pp = getPassphrase()
       val db = Database.create()
-      Database.serializeFromFile(path, db)
+      Database.serialize(pp, path, db)
     case Some(cli.show) =>
-      val db = Database.deserializeToFile(path)
+      val pp = getPassphrase()
+      val db = Database.deserialize(pp, path)
       println(s"id:        ${db.id}")
       println(s"timestamp: ${db.timeStamp}")
       for (pwd <- db.passwords) {
         println(s"[${pwd.id}] ${pwd.name} -> ${pwd.password}")
       }
     case Some(cli.add) =>
-      val db1 = Database.deserializeToFile(path)
+      val pp = getPassphrase()
+      val db1 = Database.deserialize(pp, path)
       val db2 = Database.addPassword(db1, PasswordEntry(cli.add.id(), new Date(), cli.add.name(), cli.add.password()))
-      Database.serializeFromFile(path, db2)
+      Database.serialize(pp, path, db2)
     case Some(cli.remove) =>
-      val db1 = Database.deserializeToFile(path)
+      val pp = getPassphrase()
+      val db1 = Database.deserialize(pp, path)
       val db2 = Database.removePasswordById(db1, cli.remove.id())
-      Database.serializeFromFile(path, db2)
+      Database.serialize(pp, path, db2)
     case _ =>
       cli.printHelp()
   }

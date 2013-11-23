@@ -30,7 +30,7 @@ object CryptoUtils {
   /**
    * Generates a cipher stream with AES/CBC/PKCS5Padding algorithm. Uses PBKDF2 to derive encryption key from passphrase.
    */
-  def encryptAes(output: OutputStream, passphrase: Array[Char], salt: Array[Byte], iterationCount: Int, iv: Array[Byte])(inner: OutputStream => Any) {
+  def encryptAes(output: OutputStream, passphrase: Array[Char], salt: Array[Byte], iterationCount: Int, iv: Array[Byte])(inner: OutputStream => Any): Unit = {
     val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
     val key = deriveAesKey(passphrase, salt, iterationCount)
     cipher.init(Cipher.ENCRYPT_MODE, key, new IvParameterSpec(iv))
@@ -43,13 +43,14 @@ object CryptoUtils {
   /**
    * Generates a cipher stream with AES/CBC/PKCS5Padding algorithm. Uses PBKDF2 to derive encryption key from passphrase.
    */
-  def decryptAes(input: InputStream, passphrase: Array[Char], salt: Array[Byte], iterationCount: Int, iv: Array[Byte])(inner: InputStream => Any) {
+  def decryptAes[T](input: InputStream, passphrase: Array[Char], salt: Array[Byte], iterationCount: Int, iv: Array[Byte])(inner: InputStream => T): T = {
     val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
     val key = deriveAesKey(passphrase, salt, iterationCount)
     cipher.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(iv))
     val cipherStream = new CipherInputStream(input, cipher)
-    inner(cipherStream)
+    val result = inner(cipherStream)
     cipherStream.close()
+    result
   }
 
   def generateRandomOctets(length: Int): Array[Byte] = {

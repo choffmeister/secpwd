@@ -5,6 +5,7 @@ import java.util.UUID
 import java.io.{InputStream, OutputStream}
 import java.io.{File, FileInputStream, FileOutputStream}
 import de.choffmeister.secpwd.BinaryReaderWriter._
+import de.choffmeister.secpwd.CryptoUtils._
 
 case class Database(
   id: UUID,
@@ -14,6 +15,8 @@ case class Database(
 )
 
 object Database {
+  val magicBytes = 1935896676
+
   def create(): Database = Database(UUID.randomUUID, now, Nil)
   def alter(db: Database, passwords: List[PasswordEntry]): Database =
     db.copy(id = UUID.randomUUID, timeStamp = now, parentIds = List(db.id), passwords = passwords)
@@ -81,21 +84,34 @@ object Database {
     )
   }
 
-  def serializeFromFile(path: File, db: Database): Unit = {
+  def serialize(passphrase: Array[Char], path: File, db: Database): Unit = {
     val fs = new FileOutputStream(path)
 
     try {
-      serializeDatabase(fs, db)
+      val salt = generateRandomOctets(64)
+      val iterationCount = 1024 * 256
+      val iv = generateRandomOctets(16)
+
+      fs.writeInt32(magicBytes)
+      fs.writeBinary(salt)
+      fs.writeInt32(iterationCount)
+      fs.writeBinary(iv)
+      encryptAes(fs, passphrase, salt, iterationCount, iv)(serializeDatabase(_, db))
     } finally {
       fs.close()
     }
   }
 
-  def deserializeToFile(path: File): Database = {
+  def deserialize(passphrase: Array[Char], path: File): Database = {
     val fs = new FileInputStream(path)
 
     try {
-      deserializeDatabase(fs)
+      // TODO: check magic bytes
+      val mb = fs.readInt32()
+      val salt = fs.readBinary()
+      val iterationCount = fs.readInt32()
+      val iv = fs.readBinary()
+      decryptAes(fs, passphrase, salt, iterationCount, iv)(deserializeDatabase(_))
     } finally {
       fs.close()
     }
