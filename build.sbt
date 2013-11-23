@@ -22,4 +22,6 @@ packSettings
 
 packMain := Map("secpwd" -> "de.choffmeister.secpwd.Main")
 
+ScctPlugin.instrumentSettings
+
 EclipseKeys.withSource := true
