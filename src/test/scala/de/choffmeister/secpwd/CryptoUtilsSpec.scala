@@ -17,7 +17,7 @@ class CryptoUtilsSpec extends Specification {
     val key3 = CryptoUtils.deriveKey("pass\0word".toCharArray, "sa\0lt".getBytes("ASCII"), 4096, 16 * 8)
     key3.toSeq === Hex.decodeHex("56 fa 6a a7 55 48 09 9d cc 37 d7 f0 34 25 e0 c3".replaceAll(" ", "").toCharArray).toSeq
   }
-  
+
   "derive AES keys" in {
     val key = CryptoUtils.deriveAesKey("super-secret".toCharArray, "epic-random".getBytes("ASCII"))
     key.getEncoded must haveSize(256 / 8)
@@ -40,15 +40,15 @@ class CryptoUtilsSpec extends Specification {
   }
 
   "encrypt and decrypt with AES" in {
-    val passPhrase = "secure-password".toCharArray
+    val passphrase = "secure-password".toCharArray
     val salt = CryptoUtils.generateRandomOctets(8)
     val iterationCount = 512
     val iv = CryptoUtils.generateRandomOctets(16)
 
     val encryptedWrite = new ByteArrayOutputStream()
-    CryptoUtils.encryptAes(encryptedWrite, passPhrase, salt, iterationCount, iv)(writeString(_, "Hello World!"))
+    CryptoUtils.encryptAes(encryptedWrite, passphrase, salt, iterationCount, iv)(writeString(_, "Hello World!"))
     val encryptedRead = new ByteArrayInputStream(encryptedWrite.toByteArray)
-    CryptoUtils.decryptAes(encryptedRead, passPhrase, salt, iterationCount, iv)(readString(_) === "Hello World!")
+    CryptoUtils.decryptAes(encryptedRead, passphrase, salt, iterationCount, iv)(readString(_) === "Hello World!")
 
     ok
   }
