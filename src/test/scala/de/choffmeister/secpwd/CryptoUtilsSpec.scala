@@ -5,6 +5,7 @@ import org.specs2.runner.JUnitRunner
 import org.junit.runner.RunWith
 import org.apache.commons.codec.binary.Hex
 import java.io._
+import de.choffmeister.secpwd.BinaryReaderWriter._
 
 @RunWith(classOf[JUnitRunner])
 class CryptoUtilsSpec extends Specification {
@@ -41,43 +42,19 @@ class CryptoUtilsSpec extends Specification {
     val macSalt = CryptoUtils.generateRandomOctets(8)
     val iv = CryptoUtils.generateRandomOctets(16)
 
-    val encryptedWrite = new ByteArrayOutputStream()
-    CryptoUtils.encryptAes(encryptedWrite, passphrase, deriveIterations, encSalt, macSalt, iv)(writeString(_, "Hello World!"))
-    val encryptedRead = new ByteArrayInputStream(encryptedWrite.toByteArray)
-    CryptoUtils.decryptAes(encryptedRead, passphrase, deriveIterations, encSalt, macSalt, iv)(readString(_) === "Hello World!")
-
-    ok
+    val plain = "Hello World! This is secpwd!"
+    val encrypted = CryptoUtils.encryptAes256HmacSha512(plain.getBytes, passphrase, deriveIterations, encSalt, macSalt, iv)
+    val decrypted = new String(CryptoUtils.decryptAes256HmacSha512(encrypted, passphrase, deriveIterations, encSalt, macSalt, iv))
+    plain === decrypted
   }
 
   "fail on encryption-/decryption-key mismatch" in {
     val deriveIterations = 512
-    val passphrase = "secure-password".toCharArray
     val encSalt = CryptoUtils.generateRandomOctets(8)
     val macSalt = CryptoUtils.generateRandomOctets(8)
     val iv = CryptoUtils.generateRandomOctets(16)
 
-    val encryptedWrite = new ByteArrayOutputStream()
-    CryptoUtils.encryptAes(encryptedWrite, "secure-password1".toCharArray, deriveIterations, encSalt, macSalt, iv)(writeString(_, "Hello World!"))
-    val encryptedRead = new ByteArrayInputStream(encryptedWrite.toByteArray)
-    CryptoUtils.decryptAes(encryptedRead, "secure-password2".toCharArray, deriveIterations, encSalt, macSalt, iv)(readString(_) !== "Hello World!")
-
-    ok
-  }
-
-  def writeString(s: OutputStream, str: String) {
-    s.write(str.getBytes("UTF-8"))
-  }
-
-  def readString(s: InputStream): String = {
-    val temp = new ByteArrayOutputStream()
-    val buffer = new Array[Byte](1024)
-    var done = false
-
-    while (!done) {
-      val read = s.read(buffer, 0, buffer.length)
-      if (read > 0) temp.write(buffer, 0, read) else done = true
-    }
-
-    new String(temp.toByteArray, "UTF-8")
+    val encrypted = CryptoUtils.encryptAes256HmacSha512("Hello World!".getBytes, "secure-password1".toCharArray, deriveIterations, encSalt, macSalt, iv)
+    new String(CryptoUtils.decryptAes256HmacSha512(encrypted, "secure-password2".toCharArray, deriveIterations, encSalt, macSalt, iv)) must throwA()
   }
 }

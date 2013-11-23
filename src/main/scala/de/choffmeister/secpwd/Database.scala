@@ -2,7 +2,7 @@ package de.choffmeister.secpwd
 
 import java.util.Date
 import java.util.UUID
-import java.io.{InputStream, OutputStream}
+import java.io.{InputStream, OutputStream, ByteArrayInputStream, ByteArrayOutputStream}
 import java.io.{File, FileInputStream, FileOutputStream}
 import de.choffmeister.secpwd.BinaryReaderWriter._
 import de.choffmeister.secpwd.CryptoUtils._
@@ -31,6 +31,12 @@ object Database {
 
   private def now = new Date()
 
+  def serializeDatabase(db: Database): Array[Byte] = {
+    val tmp = new ByteArrayOutputStream()
+    serializeDatabase(tmp, db)
+    tmp.toByteArray
+  }
+
   def serializeDatabase(output: OutputStream, db: Database): Unit = {
     output.writeUUID(db.id)
     output.writeDate(db.timeStamp)
@@ -56,6 +62,11 @@ object Database {
     output.writeString(cf.value)
   }
 
+  def deserializeDatabase(bytes: Array[Byte]): Database = {
+    val tmp = new ByteArrayInputStream(bytes)
+    deserializeDatabase(tmp)
+  }
+  
   def deserializeDatabase(input: InputStream): Database = {
     Database(
       input.readUUID(),
@@ -88,7 +99,7 @@ object Database {
     val fs = new FileOutputStream(path)
 
     try {
-      val deriveIterations = 1024 * 256
+      val deriveIterations = 1024 * 64
       val encSalt = generateRandomOctets(128)
       val macSalt = generateRandomOctets(128)
       val iv = generateRandomOctets(16)
@@ -98,7 +109,7 @@ object Database {
       fs.writeBinary(encSalt)
       fs.writeBinary(macSalt)
       fs.writeBinary(iv)
-      encryptAes(fs, passphrase, deriveIterations, encSalt, macSalt, iv)(serializeDatabase(_, db))
+      fs.writeBinary(encryptAes256HmacSha512(serializeDatabase(db), passphrase, deriveIterations, encSalt, macSalt, iv))
     } finally {
       fs.close()
     }
@@ -114,7 +125,7 @@ object Database {
       val encSalt = fs.readBinary()
       val macSalt = fs.readBinary()
       val iv = fs.readBinary()
-      decryptAes(fs, passphrase, deriveIterations, encSalt, macSalt, iv)(deserializeDatabase(_))
+      deserializeDatabase(decryptAes256HmacSha512(fs.readBinary(), passphrase, deriveIterations, encSalt, macSalt, iv))
     } finally {
       fs.close()
     }
