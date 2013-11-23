@@ -4,6 +4,12 @@ _secpwd_ provides a highly secure way to generate and store strong passwords for
 
 
 
+# Caution
+
+_secpwd_ is still alpha and not yet ready for production use. Feel free to try it out and contribute, but make sure that you do __not__ store important passwords solely in _secpwd_ by now.
+
+
+
 # Security
 
 All your passwords are stored in one binary file. To secure the content of your password store you use a single master passphrase. _secpwd_ uses the following technique to deduce security from your passphrase (this steps are executed every time you change something in your store like adding or removing a password):
