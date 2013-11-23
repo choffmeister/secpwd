@@ -4,6 +4,7 @@ import java.util.UUID
 import java.util.Date
 import java.io.OutputStream
 import java.io.InputStream
+import java.io.EOFException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import scala.language.implicitConversions
@@ -131,6 +132,7 @@ class BinaryReader(val stream: InputStream) {
   private def readFromStream(stream: InputStream, buffer: Array[Byte], offset: Int, length: Int) {
     if (length > 0) {
       val read = stream.read(buffer, offset, length)
+      if (read <= 0) throw new EOFException("Expected more bytes")
       readFromStream(stream, buffer, offset + read, length - read)
     }
   }
