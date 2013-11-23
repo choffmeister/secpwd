@@ -2,7 +2,7 @@ name := "secpwd"
 
 organization := "de.choffmeister"
 
-version := "0.0.0"
+version := "0.0.1"
 
 scalaVersion := "2.10.3"
 

@@ -80,7 +80,7 @@ object Main {
   def nameToId(name: String) = name.toLowerCase
 
   class CommandLineInterface(val arguments: Seq[String]) extends ScallopConf(arguments) {
-    version(s"secpwd v0.0.0 (c) 2013 Christian Hoffmeister <mail@choffmeister.de>")
+    version(s"secpwd v0.0.1 (c) 2013 Christian Hoffmeister <mail@choffmeister.de>")
 
     val init = new Subcommand("init")
     val list = new Subcommand("list")
