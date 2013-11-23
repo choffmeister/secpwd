@@ -1,4 +1,4 @@
-package de.choffmeister.secpwd
+package de.choffmeister.secpwd.utils
 
 import java.io._
 import com.jcraft.jsch._

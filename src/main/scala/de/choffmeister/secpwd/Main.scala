@@ -5,6 +5,9 @@ import java.util.UUID.randomUUID
 import java.io.File
 import org.rogach.scallop._
 import scala.language.reflectiveCalls
+import de.choffmeister.secpwd.security.PasswordUtils
+import de.choffmeister.secpwd.security.PasswordCharacters
+import de.choffmeister.secpwd.utils.InteractiveConsole
 
 object Main {
   val path = new File(System.getProperty("user.home"), ".secpwd")

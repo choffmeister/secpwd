@@ -1,12 +1,10 @@
-package de.choffmeister.secpwd
+package de.choffmeister.secpwd.utils
 
-import java.util.UUID
-import java.util.Date
 import org.specs2.mutable._
-import org.junit.runner.RunWith
 import org.specs2.runner.JUnitRunner
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
+import org.junit.runner.RunWith
+import java.util.{UUID, Date}
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
 @RunWith(classOf[JUnitRunner])
 class BinaryReaderWriterSpec extends Specification {

@@ -1,6 +1,6 @@
-package de.choffmeister.secpwd
+package de.choffmeister.secpwd.security
 
-import de.choffmeister.secpwd.CryptoUtils._
+import de.choffmeister.secpwd.security.RandomGenerator._
 
 case class PasswordCharacters(val alphaLower: Boolean = false, val alphaUpper: Boolean = false, val numbers: Boolean = false, val special: Boolean = false, val other: Boolean = false)
 

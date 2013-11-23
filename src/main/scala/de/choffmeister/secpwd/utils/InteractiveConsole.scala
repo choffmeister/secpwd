@@ -1,4 +1,4 @@
-package de.choffmeister.secpwd
+package de.choffmeister.secpwd.utils
 
 object InteractiveConsole {
   def read[T](label: String, conv: String => T): Option[T] = {

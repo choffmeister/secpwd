@@ -1,4 +1,4 @@
-package de.choffmeister.secpwd
+package de.choffmeister.secpwd.utils
 
 import java.util.UUID
 import java.util.Date
@@ -7,8 +7,8 @@ import java.io.InputStream
 import java.io.EOFException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import scala.language.implicitConversions
 import scala.annotation.tailrec
+import scala.language.implicitConversions
 
 class BinaryWriter(val stream: OutputStream) {
   private val bufRaw = new Array[Byte](8)

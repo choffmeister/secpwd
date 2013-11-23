@@ -1,9 +1,8 @@
-package de.choffmeister.secpwd
+package de.choffmeister.secpwd.utils
 
 import org.specs2.mutable._
 import org.specs2.runner.JUnitRunner
 import org.junit.runner.RunWith
-
 import java.util.UUID
 import java.io.{InputStream, ByteArrayInputStream, ByteArrayOutputStream}
 

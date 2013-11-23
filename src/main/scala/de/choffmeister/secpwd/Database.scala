@@ -4,8 +4,9 @@ import java.util.Date
 import java.util.UUID
 import java.io.{InputStream, OutputStream, ByteArrayInputStream, ByteArrayOutputStream}
 import java.io.{File, FileInputStream, FileOutputStream}
-import de.choffmeister.secpwd.BinaryReaderWriter._
-import de.choffmeister.secpwd.CryptoUtils._
+import de.choffmeister.secpwd.utils.BinaryReaderWriter._
+import de.choffmeister.secpwd.security.Encryptor._
+import de.choffmeister.secpwd.security.RandomGenerator._
 
 case class Database(
   id: UUID,

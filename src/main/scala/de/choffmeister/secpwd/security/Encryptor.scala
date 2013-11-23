@@ -1,15 +1,13 @@
-package de.choffmeister.secpwd
+package de.choffmeister.secpwd.security
 
 import java.io._
 import javax.crypto._
 import javax.crypto.spec._
 import java.security._
 import java.security.spec._
-import de.choffmeister.secpwd.BinaryReaderWriter._
+import de.choffmeister.secpwd.utils.BinaryReaderWriter._
 
-object CryptoUtils {
-  private lazy val random = new SecureRandom()
-
+object Encryptor {
   /**
    * Derives an encryption key according to PBKDF2 defined in PKCS#5 v2.0.
    * For more information see http://tools.ietf.org/html/rfc2898.
@@ -59,20 +57,6 @@ object CryptoUtils {
 
     decrypted
   }
-
-  def generateRandomOctets(length: Int): Array[Byte] = {
-    val buffer = new Array[Byte](length)
-    random.nextBytes(buffer)
-    buffer
-  }
-
-  def generateRandomOctets(buffer: Array[Byte]) {
-    random.nextBytes(buffer)
-  }
-
-  def generateRandomInts(until: Int, length: Int) = (1 to length).map(i => generateRandomInt(until))
-
-  def generateRandomInt(until: Int) = random.nextInt(until)
 
   private def compareByteArrayChunks(arr1: Array[Byte], off1: Int, arr2: Array[Byte], off2: Int, len: Int): Boolean = {
     if (len == 0) true
