@@ -70,6 +70,10 @@ object CryptoUtils {
     random.nextBytes(buffer)
   }
 
+  def generateRandomInts(until: Int, length: Int) = (1 to length).map(i => generateRandomInt(until))
+
+  def generateRandomInt(until: Int) = random.nextInt(until)
+
   private def compareByteArrayChunks(arr1: Array[Byte], off1: Int, arr2: Array[Byte], off2: Int, len: Int): Boolean = {
     if (len == 0) true
     else if (arr1.length <= off1 || arr2.length <= off2) false
