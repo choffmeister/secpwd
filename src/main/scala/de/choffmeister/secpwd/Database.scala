@@ -100,7 +100,7 @@ object Database {
     val fs = new FileOutputStream(path)
 
     try {
-      val deriveIterations = 1024 * 64
+      val deriveIterations = 1024 * 16
       val encSalt = generateRandomOctets(128)
       val macSalt = generateRandomOctets(128)
       val iv = generateRandomOctets(16)
