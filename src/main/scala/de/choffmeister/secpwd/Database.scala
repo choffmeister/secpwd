@@ -88,15 +88,17 @@ object Database {
     val fs = new FileOutputStream(path)
 
     try {
-      val salt = generateRandomOctets(64)
-      val iterationCount = 1024 * 256
+      val deriveIterations = 1024 * 256
+      val encSalt = generateRandomOctets(128)
+      val macSalt = generateRandomOctets(128)
       val iv = generateRandomOctets(16)
 
       fs.writeInt32(magicBytes)
-      fs.writeBinary(salt)
-      fs.writeInt32(iterationCount)
+      fs.writeInt32(deriveIterations)
+      fs.writeBinary(encSalt)
+      fs.writeBinary(macSalt)
       fs.writeBinary(iv)
-      encryptAes(fs, passphrase, salt, iterationCount, iv)(serializeDatabase(_, db))
+      encryptAes(fs, passphrase, deriveIterations, encSalt, macSalt, iv)(serializeDatabase(_, db))
     } finally {
       fs.close()
     }
@@ -108,10 +110,11 @@ object Database {
     try {
       // TODO: check magic bytes
       val mb = fs.readInt32()
-      val salt = fs.readBinary()
-      val iterationCount = fs.readInt32()
+      val deriveIterations = fs.readInt32()
+      val encSalt = fs.readBinary()
+      val macSalt = fs.readBinary()
       val iv = fs.readBinary()
-      decryptAes(fs, passphrase, salt, iterationCount, iv)(deserializeDatabase(_))
+      decryptAes(fs, passphrase, deriveIterations, encSalt, macSalt, iv)(deserializeDatabase(_))
     } finally {
       fs.close()
     }

@@ -18,11 +18,6 @@ class CryptoUtilsSpec extends Specification {
     key3.toSeq === Hex.decodeHex("56 fa 6a a7 55 48 09 9d cc 37 d7 f0 34 25 e0 c3".replaceAll(" ", "").toCharArray).toSeq
   }
 
-  "derive AES keys" in {
-    val key = CryptoUtils.deriveAesKey("super-secret".toCharArray, "epic-random".getBytes("ASCII"))
-    key.getEncoded must haveSize(256 / 8)
-  }
-
   "generate random octets" in {
     val rnd1 = new Array[Byte](24)
     val rnd2 = new Array[Byte](24)
@@ -40,28 +35,31 @@ class CryptoUtilsSpec extends Specification {
   }
 
   "encrypt and decrypt with AES" in {
+    val deriveIterations = 512
     val passphrase = "secure-password".toCharArray
-    val salt = CryptoUtils.generateRandomOctets(8)
-    val iterationCount = 512
+    val encSalt = CryptoUtils.generateRandomOctets(8)
+    val macSalt = CryptoUtils.generateRandomOctets(8)
     val iv = CryptoUtils.generateRandomOctets(16)
 
     val encryptedWrite = new ByteArrayOutputStream()
-    CryptoUtils.encryptAes(encryptedWrite, passphrase, salt, iterationCount, iv)(writeString(_, "Hello World!"))
+    CryptoUtils.encryptAes(encryptedWrite, passphrase, deriveIterations, encSalt, macSalt, iv)(writeString(_, "Hello World!"))
     val encryptedRead = new ByteArrayInputStream(encryptedWrite.toByteArray)
-    CryptoUtils.decryptAes(encryptedRead, passphrase, salt, iterationCount, iv)(readString(_) === "Hello World!")
+    CryptoUtils.decryptAes(encryptedRead, passphrase, deriveIterations, encSalt, macSalt, iv)(readString(_) === "Hello World!")
 
     ok
   }
 
   "fail on encryption-/decryption-key mismatch" in {
-    val salt = CryptoUtils.generateRandomOctets(8)
-    val iterationCount = 512
+    val deriveIterations = 512
+    val passphrase = "secure-password".toCharArray
+    val encSalt = CryptoUtils.generateRandomOctets(8)
+    val macSalt = CryptoUtils.generateRandomOctets(8)
     val iv = CryptoUtils.generateRandomOctets(16)
 
     val encryptedWrite = new ByteArrayOutputStream()
-    CryptoUtils.encryptAes(encryptedWrite, "secure-password1".toCharArray, salt, iterationCount, iv)(writeString(_, "Hello World!"))
+    CryptoUtils.encryptAes(encryptedWrite, "secure-password1".toCharArray, deriveIterations, encSalt, macSalt, iv)(writeString(_, "Hello World!"))
     val encryptedRead = new ByteArrayInputStream(encryptedWrite.toByteArray)
-    CryptoUtils.decryptAes(encryptedRead, "secure-password2".toCharArray, salt, iterationCount, iv)(readString(_) !== "Hello World!")
+    CryptoUtils.decryptAes(encryptedRead, "secure-password2".toCharArray, deriveIterations, encSalt, macSalt, iv)(readString(_) !== "Hello World!")
 
     ok
   }
