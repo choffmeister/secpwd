@@ -1,7 +1,6 @@
 package de.choffmeister.secpwd.utils
 
-import java.io.File
-import java.io.PrintWriter
+import java.io.{File, PrintWriter, FileInputStream, FileOutputStream}
 import scala.io.Source
 import scala.io.Codec
 import scala.language.implicitConversions
@@ -16,6 +15,27 @@ class RichFile(val file: File) {
      }
     finally {
       out.close()
+    }
+  }
+
+  def bytes: Array[Byte] = {
+    val fs = new FileInputStream(file)
+    try {
+      val length = file.length().toInt
+      val b = new Array[Byte](length)
+      fs.read(b, 0, length)
+      b
+    } finally {
+      fs.close()
+    }
+  }
+
+  def bytes_=(b: Array[Byte]) {
+    val fs = new FileOutputStream(file)
+    try {
+      fs.write(b, 0, b.length)
+    } finally {
+      fs.close()
     }
   }
 }

@@ -19,49 +19,38 @@ object Encryptor {
   }
 
   /**
-   * Encrypts a byte array with AES/CBC/PKCS5Padding algorithm. Uses PBKDF2 to derive keys from passphrase
-   * and HMAC-SHA512 to ensure integrity.
+   * Encrypts a byte array with AES/CBC/PKCS5Padding algorithm. Uses PBKDF2 to derive key from passphrase.
    */
-  def encryptAes256HmacSha512(bytes: Array[Byte], passphrase: Array[Char], deriveIterations: Int, aesSalt: Array[Byte], hmacSalt: Array[Byte], iv: Array[Byte]): Array[Byte] = {
+  def encryptAes256(bytes: Array[Byte], passphrase: Array[Char], deriveIterations: Int, salt: Array[Byte], iv: Array[Byte]): Array[Byte] = {
     val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
-    val cipherKey = new SecretKeySpec(deriveKey(passphrase, aesSalt, deriveIterations, 256), "AES")
+    val cipherKey = new SecretKeySpec(deriveKey(passphrase, salt, deriveIterations, 256), "AES")
     cipher.init(Cipher.ENCRYPT_MODE, cipherKey, new IvParameterSpec(iv))
-    val encrypted = cipher.update(bytes, 0, bytes.length) ++ cipher.doFinal()
+    val encrypted = cipher.doFinal(bytes)
 
-    val mac = Mac.getInstance("HmacSHA512")
-    val macKey = new SecretKeySpec(deriveKey(passphrase, hmacSalt, deriveIterations, 512), "HmacSHA512")
-    mac.init(macKey)
-    mac.update(encrypted, 0, encrypted.length)
-    val signature = mac.doFinal()
-
-    encrypted ++ signature
+    encrypted
   }
 
   /**
-   * Decrypts a byte array with AES/CBC/PKCS5Padding algorithm. Uses PBKDF2 to derive keys from passphrase
-   * and HMAC-SHA512 to ensure integrity.
+   * Decrypts a byte array with AES/CBC/PKCS5Padding algorithm. Uses PBKDF2 to derive key from passphrase.
    */
-  def decryptAes256HmacSha512(bytes: Array[Byte], passphrase: Array[Char], deriveIterations: Int, aesSalt: Array[Byte], hmacSalt: Array[Byte], iv: Array[Byte]): Array[Byte] = {
-    val mac = Mac.getInstance("HmacSHA512")
-    val macKey = new SecretKeySpec(deriveKey(passphrase, hmacSalt, deriveIterations, 512), "HmacSHA512")
-    mac.init(macKey)
-    mac.update(bytes, 0, bytes.length - 64)
-    val signature = mac.doFinal()
-
-    if (!compareByteArrayChunks(bytes, bytes.length - 64, signature, 0, 64)) throw new Exception("Passphrase invalid")
-
+  def decryptAes256(bytes: Array[Byte], passphrase: Array[Char], deriveIterations: Int, salt: Array[Byte], iv: Array[Byte]): Array[Byte] = {
     val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
-    val cipherKey = new SecretKeySpec(deriveKey(passphrase, aesSalt, deriveIterations, 256), "AES")
+    val cipherKey = new SecretKeySpec(deriveKey(passphrase, salt, deriveIterations, 256), "AES")
     cipher.init(Cipher.DECRYPT_MODE, cipherKey, new IvParameterSpec(iv))
-    val decrypted = cipher.update(bytes, 0, bytes.length - 64) ++ cipher.doFinal()
+    val decrypted = cipher.doFinal(bytes)
 
     decrypted
   }
 
-  private def compareByteArrayChunks(arr1: Array[Byte], off1: Int, arr2: Array[Byte], off2: Int, len: Int): Boolean = {
-    if (len == 0) true
-    else if (arr1.length <= off1 || arr2.length <= off2) false
-    else if (arr1(off1) != arr2(off2)) false
-    else compareByteArrayChunks(arr1, off1 + 1, arr2, off2 + 1, len - 1)
+  /**
+   * Signs a byte array with HMAC-SHA512. Uses PBKDF2 to derive key from passphrase.
+   */
+  def hmacSha512(bytes: Array[Byte], passphrase: Array[Char], deriveIterations: Int, salt: Array[Byte]): Array[Byte] = {
+    val mac = Mac.getInstance("HmacSHA512")
+    val macKey = new SecretKeySpec(deriveKey(passphrase, salt, deriveIterations, 512), "HmacSHA512")
+    mac.init(macKey)
+    val signature = mac.doFinal(bytes)
+
+    signature
   }
 }

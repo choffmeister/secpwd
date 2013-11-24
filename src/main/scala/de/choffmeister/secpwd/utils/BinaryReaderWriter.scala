@@ -65,6 +65,10 @@ class BinaryWriter(val stream: OutputStream) {
     writeInt64(value.getTime)
   }
 
+  def writeBytesRaw(value: Array[Byte]): Unit = {
+    stream.write(value, 0, value.length)
+  }
+
   def close(): Unit = stream.close()
 
   private def writeToStream(stream: OutputStream, buffer: Array[Byte], offset: Int, length: Int) {
@@ -124,6 +128,12 @@ class BinaryReader(val stream: InputStream) {
   def readDate(): Date = {
     val t = readInt64()
     return new Date(t)
+  }
+
+  def readBytesRaw(length: Int): Array[Byte] = {
+    val buf = new Array[Byte](length)
+    readFromStream(stream, buf, 0, length)
+    return buf
   }
 
   def close(): Unit = stream.close()

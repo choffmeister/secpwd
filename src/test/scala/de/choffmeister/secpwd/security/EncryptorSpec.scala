@@ -4,6 +4,7 @@ import org.specs2.mutable._
 import org.specs2.runner.JUnitRunner
 import org.junit.runner.RunWith
 import java.io._
+import javax.crypto.BadPaddingException
 import org.apache.commons.codec.binary.Hex
 import de.choffmeister.secpwd.utils.BinaryReaderWriter._
 import de.choffmeister.secpwd.security.Encryptor._
@@ -24,23 +25,44 @@ class EncryptorSpec extends Specification {
   "encrypt and decrypt with AES" in {
     val deriveIterations = 512
     val passphrase = "secure-password".toCharArray
-    val encSalt = generateRandomOctets(8)
-    val macSalt = generateRandomOctets(8)
+    val salt = generateRandomOctets(8)
     val iv = generateRandomOctets(16)
 
     val plain = "Hello World! This is secpwd!"
-    val encrypted = encryptAes256HmacSha512(plain.getBytes, passphrase, deriveIterations, encSalt, macSalt, iv)
-    val decrypted = new String(decryptAes256HmacSha512(encrypted, passphrase, deriveIterations, encSalt, macSalt, iv))
-    plain === decrypted
+    val encrypted = encryptAes256(plain.getBytes, passphrase, deriveIterations, salt, iv)
+    val decrypted = new String(decryptAes256(encrypted, passphrase, deriveIterations, salt, iv))
+    decrypted === plain
   }
 
   "fail on encryption-/decryption-key mismatch" in {
+    try {
+      val deriveIterations = 512
+      val salt = generateRandomOctets(8)
+      val iv = generateRandomOctets(16)
+
+      val plain = "Hello World! This is secpwd!"
+      val encrypted = encryptAes256(plain.getBytes, "secure-password1".toCharArray, deriveIterations, salt, iv)
+      val decrypted = new String(decryptAes256(encrypted, "secure-password2".toCharArray, deriveIterations, salt, iv))
+      decrypted !== plain
+    } catch {
+      case e: BadPaddingException => ok
+    }
+  }
+
+  "mac with HMAC-SHA-512" in {
     val deriveIterations = 512
-    val encSalt = generateRandomOctets(8)
-    val macSalt = generateRandomOctets(8)
+    val salt = generateRandomOctets(8)
     val iv = generateRandomOctets(16)
 
-    val encrypted = encryptAes256HmacSha512("Hello World!".getBytes, "secure-password1".toCharArray, deriveIterations, encSalt, macSalt, iv)
-    new String(decryptAes256HmacSha512(encrypted, "secure-password2".toCharArray, deriveIterations, encSalt, macSalt, iv)) must throwA()
+    val signature1 = hmacSha512("Hello World!".getBytes, "secure-password1".toCharArray, deriveIterations, salt)
+    val signature2 = hmacSha512("Hello World2!".getBytes, "secure-password1".toCharArray, deriveIterations, salt)
+    val signature3 = hmacSha512("Hello World!".getBytes, "secure-password2".toCharArray, deriveIterations, salt)
+    val signature4 = hmacSha512("Hello World2!".getBytes, "secure-password2".toCharArray, deriveIterations, salt)
+    signature1 !== signature2
+    signature1 !== signature3
+    signature1 !== signature4
+    signature2 !== signature3
+    signature2 !== signature4
+    signature3 !== signature4
   }
 }
