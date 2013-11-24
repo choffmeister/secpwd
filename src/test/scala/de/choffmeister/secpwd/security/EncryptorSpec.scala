@@ -22,15 +22,15 @@ class EncryptorSpec extends Specification {
     key3.toSeq === Hex.decodeHex("56 fa 6a a7 55 48 09 9d cc 37 d7 f0 34 25 e0 c3".replaceAll(" ", "").toCharArray).toSeq
   }
 
-  "encrypt and decrypt with AES" in {
+  "encrypt and decrypt with AES-128" in {
     val deriveIterations = 512
     val passphrase = "secure-password".toCharArray
     val salt = generateRandomOctets(8)
     val iv = generateRandomOctets(16)
 
     val plain = "Hello World! This is secpwd!"
-    val encrypted = encryptAes256(plain.getBytes, passphrase, deriveIterations, salt, iv)
-    val decrypted = new String(decryptAes256(encrypted, passphrase, deriveIterations, salt, iv))
+    val encrypted = encryptAes128(plain.getBytes, passphrase, deriveIterations, salt, iv)
+    val decrypted = new String(decryptAes128(encrypted, passphrase, deriveIterations, salt, iv))
     decrypted === plain
   }
 
@@ -41,8 +41,8 @@ class EncryptorSpec extends Specification {
       val iv = generateRandomOctets(16)
 
       val plain = "Hello World! This is secpwd!"
-      val encrypted = encryptAes256(plain.getBytes, "secure-password1".toCharArray, deriveIterations, salt, iv)
-      val decrypted = new String(decryptAes256(encrypted, "secure-password2".toCharArray, deriveIterations, salt, iv))
+      val encrypted = encryptAes128(plain.getBytes, "secure-password1".toCharArray, deriveIterations, salt, iv)
+      val decrypted = new String(decryptAes128(encrypted, "secure-password2".toCharArray, deriveIterations, salt, iv))
       decrypted !== plain
     } catch {
       case e: BadPaddingException => ok

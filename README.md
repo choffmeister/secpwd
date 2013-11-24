@@ -20,7 +20,7 @@ All your passwords are stored in one binary file. To secure the content of your 
 * Generate random initial vector for AES (_iv_)
 * Derive AES key (_k1_) from _pp_ and _s1_ with PBKDF2 like specified in RFC-2898
 * Derive HMAC key (_k2_) from _pp_ and _s2_ with PBKDF2 like specified in RFC-2898
-* Encrypt your whole store with AES-256 using _k1_ as key and _iv_ as initial vector
+* Encrypt your whole store with AES-128 using _k1_ as key and _iv_ as initial vector
 * Sign the encrypted store with HMAC-SHA-512 using _k2_ as key
 
 

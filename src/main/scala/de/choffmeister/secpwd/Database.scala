@@ -116,7 +116,7 @@ object Database {
     }
 
     writeBlock(bs) { ms =>
-      ms.writeBinary(encryptAes256(serializeDatabase(db), passphrase, cryptinfo.deriveIterations, cryptinfo.encSalt, cryptinfo.iv))
+      ms.writeBinary(encryptAes128(serializeDatabase(db), passphrase, cryptinfo.deriveIterations, cryptinfo.encSalt, cryptinfo.iv))
     }
 
     bs.writeBytesRaw(hmacSha512(bs.toByteArray, passphrase, cryptinfo.deriveIterations, cryptinfo.macSalt))
@@ -150,7 +150,7 @@ object Database {
     val calcSignature = hmacSha512(allBytes.take(allBytes.length - 64), passphrase, cryptoinfo.deriveIterations, cryptoinfo.macSalt)
     if (!compareByteArrays(calcSignature, signature)) throw new DatabaseSerializationException("Invalid passphrase")
 
-    deserializeDatabase(decryptAes256(encrypted, passphrase, cryptoinfo.deriveIterations, cryptoinfo.encSalt, cryptoinfo.iv))
+    deserializeDatabase(decryptAes128(encrypted, passphrase, cryptoinfo.deriveIterations, cryptoinfo.encSalt, cryptoinfo.iv))
   }
 
   def writeBlock(output: OutputStream)(inner: OutputStream => Any): Unit = {
