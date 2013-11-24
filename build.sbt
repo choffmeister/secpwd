@@ -24,4 +24,6 @@ packMain := Map("secpwd" -> "de.choffmeister.secpwd.Main")
 
 ScctPlugin.instrumentSettings
 
+CoveragePlugin.coverageSettings
+
 EclipseKeys.withSource := true
