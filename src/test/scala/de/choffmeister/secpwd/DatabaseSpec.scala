@@ -120,13 +120,14 @@ class DatabaseSpec extends Specification {
     val v = (0 until 6).map(i => db.versions(5 - i))
 
     Database.diff(db, v(0), v(1)) === Map("service1" -> (None, Some(pwd1)))
-    Database.diff(db, v(1), v(2)) === Map("service2" -> (None, Some(pwd2)), "service1" -> (Some(pwd1), Some(pwd1)))
-    Database.diff(db, v(2), v(3)) === Map("service3" -> (None, Some(pwd3)), "service2" -> (Some(pwd2), Some(pwd2)), "service1" -> (Some(pwd1), Some(pwd1)))
-    Database.diff(db, v(3), v(4)) === Map("service3" -> (Some(pwd3), Some(pwd3)), "service2" -> (Some(pwd2), Some(pwd2)), "service1" -> (Some(pwd1), Some(pwd4)))
-    Database.diff(db, v(4), v(5)) === Map("service2" -> (Some(pwd2), None), "service1" -> (Some(pwd4), Some(pwd4)), "service3" -> (Some(pwd3), Some(pwd3)))
+    Database.diff(db, v(1), v(2)) === Map("service2" -> (None, Some(pwd2)))
+    Database.diff(db, v(2), v(3)) === Map("service3" -> (None, Some(pwd3)))
+    Database.diff(db, v(3), v(4)) === Map("service1" -> (Some(pwd1), Some(pwd4)))
+    Database.diff(db, v(4), v(5)) === Map("service2" -> (Some(pwd2), None))
 
+    Database.diff(db, v(0), v(3)) === Map("service3" -> (None, Some(pwd3)), "service2" -> (None, Some(pwd2)), "service1" -> (None, Some(pwd1)))
     Database.diff(db, v(0), v(5)) === Map("service1" -> (None, Some(pwd4)), "service3" -> (None, Some(pwd3)))
-    Database.diff(db, v(3), v(5)) === Map("service2" -> (Some(pwd2), None), "service3" -> (Some(pwd3), Some(pwd3)), "service1" -> (Some(pwd1), Some(pwd4)))
+    Database.diff(db, v(3), v(5)) === Map("service2" -> (Some(pwd2), None), "service1" -> (Some(pwd1), Some(pwd4)))
   }
 
   "find lowest common ancestor" in {
@@ -157,5 +158,85 @@ class DatabaseSpec extends Specification {
     Database.lowestCommonAncestor(db5a, db5a.versions(0), db5b, db5b.versions(0)) === db3.versions(0)
     Database.lowestCommonAncestor(db6a, db6a.versions(0), db6b, db5b.versions(0)) === db3.versions(0)
     Database.lowestCommonAncestor(db4a, db4a.versions(0), db6b, db5b.versions(0)) === db3.versions(0)
+  }
+  
+  "merge" in {
+    val db1 = Database.create()
+    val pwd1 = PasswordEntry(UUID.randomUUID(), new Date(0), "service1", "Service #1", SecureString("password1".toCharArray))
+    val db2 = Database.addPassword(db1, pwd1)
+    val pwd2 = PasswordEntry(UUID.randomUUID(), new Date(1), "service2", "Service #2", SecureString("password2".toCharArray))
+    val db3 = Database.addPassword(db2, pwd2)
+
+    val pwd3a = PasswordEntry(UUID.randomUUID(), new Date(2), "service3a", "Service #3a", SecureString("password3a".toCharArray))
+    val db4a = Database.addPassword(db3, pwd3a)
+    val pwd4a = PasswordEntry(UUID.randomUUID(), new Date(2), "service4a", "Service #4a", SecureString("password4a".toCharArray))
+    val db5a = Database.addPassword(db4a, pwd4a)
+    val db6a = Database.removePasswordByKey(db5a, "service3a")
+
+    val pwd3b = PasswordEntry(UUID.randomUUID(), new Date(2), "service3b", "Service #3b", SecureString("password3b".toCharArray))
+    val db4b = Database.addPassword(db3, pwd3b)
+    val pwd4b = PasswordEntry(UUID.randomUUID(), new Date(2), "service4b", "Service #4b", SecureString("password4b".toCharArray))
+    val db5b = Database.addPassword(db4b, pwd4b)
+    val db6b = Database.removePasswordByKey(db5b, "service3b")
+
+    Database.merge(db3, db3.versions(0), db3, db3.versions(0)) === db3
+    Database.merge(db1, db1.versions(0), db3, db3.versions(0)) === db3
+    Database.merge(db3, db3.versions(0), db1, db1.versions(0)) === db3
+
+    val merged1 = Database.merge(db4a, db4a.versions(0), db4b, db4b.versions(0))
+    merged1 === Database(
+      merged1.id,
+      merged1.timeStamp,
+      DatabaseVersion(
+        merged1.id,
+        merged1.timeStamp,
+        4,
+        List(db4a.id, db4b.id),
+        (pwd3b :: pwd3a :: db3.passwords).map(_.id)) :: db4a.versions(0) :: db4b.versions(0) :: db3.versions,
+      pwd3a :: pwd3b :: db3.passwords
+    )
+
+    val merged2 = Database.merge(db6a, db6a.versions(0), db6b, db6b.versions(0))
+    merged2 === Database(
+      merged2.id,
+      merged2.timeStamp,
+      DatabaseVersion(
+        merged2.id,
+        merged2.timeStamp,
+        6,
+        List(db6a.id, db6b.id),
+        (pwd4b :: pwd4a :: db3.passwords).map(_.id)) :: db6a.versions(0) :: db6b.versions(0) :: db5a.versions(0) :: db5b.versions(0) :: db4a.versions(0) :: db4b.versions(0) :: db3.versions,
+      pwd4a :: pwd3a :: pwd4b :: pwd3b :: db3.passwords
+    )
+
+    val otherDb = Database.create()
+    Database.merge(db6b, db6b.versions(0), otherDb, otherDb.versions(0)) must throwA
+  }
+
+  "from version" in {
+    val db1 = Database.create()
+    val pwd1 = PasswordEntry(UUID.randomUUID(), new Date(0), "service1", "Service #1", SecureString("password1".toCharArray))
+    val db2 = Database.addPassword(db1, pwd1)
+    val pwd2 = PasswordEntry(UUID.randomUUID(), new Date(1), "service2", "Service #2", SecureString("password2".toCharArray))
+    val db3 = Database.addPassword(db2, pwd2)
+    val pwd3a = PasswordEntry(UUID.randomUUID(), new Date(2), "service3a", "Service #3a", SecureString("password3a".toCharArray))
+    val db4a = Database.addPassword(db3, pwd3a)
+    val pwd4a = PasswordEntry(UUID.randomUUID(), new Date(2), "service4a", "Service #4a", SecureString("password4a".toCharArray))
+    val db5a = Database.addPassword(db4a, pwd4a)
+    val pwd5a = PasswordEntry(UUID.randomUUID(), new Date(2), "service5a", "Service #5a", SecureString("password5a".toCharArray))
+    val db6a = Database.addPassword(db5a, pwd5a)
+    val pwd3b = PasswordEntry(UUID.randomUUID(), new Date(2), "service3b", "Service #3b", SecureString("password3b".toCharArray))
+    val db4b = Database.addPassword(db3, pwd3b)
+    val pwd4b = PasswordEntry(UUID.randomUUID(), new Date(2), "service4b", "Service #4b", SecureString("password4b".toCharArray))
+    val db5b = Database.addPassword(db4b, pwd4b)
+    val pwd5b = PasswordEntry(UUID.randomUUID(), new Date(2), "service5b", "Service #5b", SecureString("password5b".toCharArray))
+    val db6b = Database.addPassword(db5b, pwd5b)
+
+    Database.fromVersion(db6b, db6b.versions(0)) === db6b
+    Database.fromVersion(db6b, db6b.versions(1)) === db5b
+    Database.fromVersion(db6b, db6b.versions(2)) === db4b
+    Database.fromVersion(db6b, db6b.versions(3)) === db3
+    Database.fromVersion(db6b, db6b.versions(4)) === db2
+    Database.fromVersion(db6b, db6b.versions(5)) === db1
   }
 }

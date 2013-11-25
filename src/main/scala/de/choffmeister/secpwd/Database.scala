@@ -117,19 +117,89 @@ object Database {
       .map(pwd => (pwd.key, (Some(pwd), None))).toMap
     val added = addedKeys.map(k => pwds2.find(_.key == k).get)
       .map(pwd => (pwd.key, (None, Some(pwd)))).toMap
-    val remaining = remainingKeys.map(k => (pwds1.find(_.key == k). get, pwds2.find(_.key == k).get))
+    val changed = remainingKeys.map(k => (pwds1.find(_.key == k). get, pwds2.find(_.key == k).get))
+      .filter(pwds => pwds._1 != pwds._2)
       .map(pwds => (pwds._1.key, (Some(pwds._1), Some(pwds._2))))
 
-    removed ++ added ++ remaining
+    removed ++ added ++ changed
   }
+
+  def merge(db1: Database, v1: DatabaseVersion, db2: Database, v2: DatabaseVersion): Database = {
+    val lca = lowestCommonAncestor(db1, v1, db2, v2)
+
+    if (lca == v1) return Database.fromVersion(db2, v2)
+    if (lca == v2) return Database.fromVersion(db1, v1)
+
+    val diff1 = Database.diff(db1, lca, v1)
+    val diff2 = Database.diff(db2, lca, v2)
+    val keys = diff1.map(_._1).toList.union(diff2.map(_._1).toList).distinct
+    val versions1 = gatherVersions(db1, v1).toList
+    val versions2 = gatherVersions(db2, v2).toList
+
+    val pwds1 = db1.passwords.filter(pwd => versions1.flatMap(_.passwordIds).contains(pwd.id))
+    val pwds2 = db2.passwords.filter(pwd => versions2.flatMap(_.passwordIds).contains(pwd.id))
+    val pwdsCommon = pwds1.intersect(pwds2)
+    val pwds1Only = pwds1.diff(pwds2)
+    val pwds2Only = pwds2.diff(pwds1)
+    var passwords = pwds1Only ::: pwds2Only ::: pwdsCommon
+    var passwordIds = lca.passwordIds
+
+    for (k <- keys) {
+      val c1 = diff1.find(_._1 == k)
+      val c2 = diff2.find(_._1 == k)
+
+      (c1, c2) match {
+        case (Some(c1), None) =>
+          c1 match {
+            case (_, (Some(a), None)) =>
+              passwordIds = passwordIds.filter(_ != a.id)
+            case (_, (None, Some(b))) =>
+              if (!passwords.contains(b)) passwords = b :: passwords
+              passwordIds = b.id :: passwordIds
+            case (_, (Some(a), Some(b))) =>
+              if (!passwords.contains(b)) passwords = b :: passwords
+              passwordIds = b.id :: passwordIds.filter(_ != a.id)
+          }
+        case (None, Some(c2)) =>
+          c2 match {
+            case (_, (Some(a), None)) =>
+              passwordIds = passwordIds.filter(_ != a.id)
+            case (_, (None, Some(b))) =>
+              if (!passwords.contains(b)) passwords = b :: passwords
+              passwordIds = b.id :: passwordIds
+            case (_, (Some(a), Some(b))) =>
+              if (!passwords.contains(b)) passwords = b :: passwords
+              passwordIds = b.id :: passwordIds.filter(_ != a.id)
+          }
+        case (Some(c1), Some(c2)) =>
+          throw new Exception("Merge conflict")
+        case (None, None) =>
+          throw new Exception("Impossible case")
+      }
+    }
+
+    val id = UUID.randomUUID()
+    val timeStamp = new Date()
+    val priorVersions = (versions1 ::: versions2).distinct.sortWith(_.depth > _.depth)
+    Database(
+      id,
+      timeStamp,
+      DatabaseVersion(id, timeStamp, Math.max(v1.depth, v2.depth) + 1, List(v1.versionId, v2.versionId), passwordIds) :: priorVersions,
+      passwords
+    )
+  }
+
+  private def gatherVersions(db: Database, v: DatabaseVersion): List[DatabaseVersion] =
+    v :: v.parentVersionIds.map(pid => db.versions.find(_.versionId == pid).get).flatMap(gatherVersions(db, _)).sortWith(_.depth >= _.depth)
 
   def lowestCommonAncestor(db1: Database, v1: DatabaseVersion, db2: Database, v2: DatabaseVersion): DatabaseVersion = {
     @scala.annotation.tailrec
     def recursion(l1: List[DatabaseVersion], l2: List[DatabaseVersion]): DatabaseVersion =
       l1.intersect(l2) match {
-        case lca :: rest :: Nil => throw new Exception()
+        case lca :: rest :: Nil => throw new Exception("Lowest common ancestor must be unique")
         case lca :: Nil => lca
         case _ =>
+          if (l1.isEmpty || l2.isEmpty) throw new Exception("Cannot find a common ancestor")
           val md1 = l1.map(_.depth).max
           val md2 = l2.map(_.depth).max
           var nl1 = l1
@@ -163,6 +233,17 @@ object Database {
     val id = UUID.randomUUID()
     val now = new Date()
     db.copy(id = id, timeStamp = now, versions = DatabaseVersion(id, now, db.versions(0).depth + 1, List(db.id), passwordId) :: db.versions, passwords = passwords)
+  }
+
+  def fromVersion(db: Database, v: DatabaseVersion): Database = {
+    val versions = gatherVersions(db, v)
+
+    Database(
+      v.versionId,
+      v.timeStamp,
+      versions,
+      db.passwords.filter(pwd => versions.flatMap(_.passwordIds).contains(pwd.id))
+    )
   }
 
   def serializeDatabase(db: Database): Array[Byte] = {
