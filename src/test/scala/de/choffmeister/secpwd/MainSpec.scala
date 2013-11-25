@@ -14,7 +14,7 @@ import de.choffmeister.securestring.SecureString
 class MainSpec extends Specification {
   def tmp = new File(System.getProperty("java.io.tmpdir"), UUID.randomUUID.toString)
 
-  "init, add, remove and allow HEAD change" in {
+  "init, add, remove, show and allow HEAD change" in {
     val pp = SecureString("password".toCharArray)
     val main = new Main(tmp)
     main.init(pp)
@@ -31,9 +31,16 @@ class MainSpec extends Specification {
     main.list(pp) === List(pwd2, pwd1)
     val state3 = main.head
 
+    main.show(pp, "gmail") === Some(pwd1)
+    main.show(pp, pwd2.id.toString) === Some(pwd2)
+
     main.remove(pp, "gmail")
     main.list(pp) === List(pwd2)
     val state4 = main.head
+
+    main.remove(pp, pwd2.id.toString)
+    main.list(pp) === Nil
+    val state5 = main.head
 
     main.head = state1
     main.list(pp) === Nil
@@ -43,6 +50,8 @@ class MainSpec extends Specification {
     main.list(pp) === List(pwd2, pwd1)
     main.head = state4
     main.list(pp) === List(pwd2)
+    main.head = state5
+    main.list(pp) === Nil
   }
 
   "detect manipulations of database" in {

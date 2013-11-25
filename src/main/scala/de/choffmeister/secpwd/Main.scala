@@ -21,11 +21,14 @@ class Main(val directory: File) {
     db
   }
 
-  def show(passphrase: SecureString, id: String): Option[PasswordEntry] = {
+  def show(passphrase: SecureString, idOrKey: String): Option[PasswordEntry] = {
     val db = Database.deserialize(passphrase, path(head))
-    db.passwords.find(_.id == id)
+    parseIdOrKey(idOrKey) match {
+      case Left(id) => db.passwordById(id)
+      case Right(key) => db.currentPasswordByKey(key)
+    }
   }
-  
+
   def list(passphrase: SecureString): List[PasswordEntry] = {
     val db = Database.deserialize(passphrase, path(head))
     db.currentPasswords
@@ -44,9 +47,12 @@ class Main(val directory: File) {
     entry
   }
 
-  def remove(passphrase: SecureString, key: String) {
+  def remove(passphrase: SecureString, idOrKey: String) {
     val db1 = Database.deserialize(passphrase, path(head))
-    val db2 = Database.removePasswordByKey(db1, key)
+    val db2 = parseIdOrKey(idOrKey) match {
+      case Left(id) => Database.removePasswordById(db1, id)
+      case Right(key) => Database.removePasswordByKey(db1, key)
+    }
     Database.serialize(passphrase, path(db2.id), db2)
     head = db2.id
   }
@@ -54,6 +60,14 @@ class Main(val directory: File) {
   def head: UUID = UUID.fromString(new File(directory, "HEAD").text.trim)
   def head_=(id: UUID): Unit = new File(directory, "HEAD").text = id.toString
   def path(id: UUID): File = new File(directory, id.toString)
+
+  private def parseIdOrKey(idOrKey: String): Either[UUID, String] = {
+    try {
+      Left(UUID.fromString(idOrKey))
+    } catch {
+      case e: IllegalArgumentException => Right(idOrKey)
+    }
+  }
 }
 
 object Main {
@@ -71,9 +85,9 @@ object Main {
             println(s"[${pwd.key}] ${pwd.name} (${PasswordUtils.getBitEntropy(pwd.password)} bits) ${pwd.timeStamp}")
           }
         case Some(cli.show) =>
-          passphrase(main.show(_, cli.show.id())) match {
+          passphrase(main.show(_, cli.show.idOrKey())) match {
             case Some(pwd) =>
-              println(pwd.id)
+              println(pwd.key)
               println(pwd.timeStamp)
               println(pwd.name)
               println(pwd.userName)
@@ -82,7 +96,7 @@ object Main {
                 println()
               }
             case _ =>
-              println(s"Cannot find password ${cli.show.id()}")
+              println(s"Cannot find password ${cli.show.idOrKey()}")
           }
         case Some(cli.add) =>
           val name = InteractiveConsole.read("Name").get
@@ -100,6 +114,8 @@ object Main {
               Right((PasswordCharacters(alphaLower, alphaUpper, numbers, special), length))
           }
           passphrase(main.add(_, id, name, pwd))
+        case Some(cli.remove) =>
+          passphrase(main.remove(_, cli.remove.idOrKey()))
         case _ =>
           cli.printHelp()
       }
@@ -124,12 +140,12 @@ object Main {
     val init = new Subcommand("init")
     val list = new Subcommand("list")
     val show = new Subcommand("show") {
-      val id = trailArg[String]("id")
+      val idOrKey = trailArg[String]("id or key")
       val printPassword = opt[Boolean]("print-password", 'p')
     }
     val add = new Subcommand("add")
     val remove = new Subcommand("rm") {
-      val id = trailArg[String]("id")
+      val idOrKey = trailArg[String]("id or key")
     }
   }
 }
