@@ -103,4 +103,29 @@ class DatabaseSpec extends Specification {
 
     db4 === db3
   }
+
+  "diff" in {
+    val db1 = Database.create()
+    val pwd1 = PasswordEntry(UUID.randomUUID(), new Date(0), "service1", "Service #1", SecureString("password1".toCharArray))
+    val db2 = Database.addPassword(db1, pwd1)
+    val pwd2 = PasswordEntry(UUID.randomUUID(), new Date(1), "service2", "Service #2", SecureString("password2".toCharArray))
+    val db3 = Database.addPassword(db2, pwd2)
+    val pwd3 = PasswordEntry(UUID.randomUUID(), new Date(2), "service3", "Service #3", SecureString("password3".toCharArray))
+    val db4 = Database.addPassword(db3, pwd3)
+    val pwd4 = pwd1.copy(id = UUID.randomUUID(), timeStamp = new Date(3), password = SecureString("password1-new".toCharArray))
+    val db5 = Database.updatePassword(db4, pwd4)
+    val db6 = Database.removePasswordByKey(db5, "service2")
+    
+    val db = db6
+    val v = (0 until 6).map(i => db.versions(5 - i))
+
+    Database.diff(db, v(0), v(1)) === Map("service1" -> (None, Some(pwd1)))
+    Database.diff(db, v(1), v(2)) === Map("service2" -> (None, Some(pwd2)), "service1" -> (Some(pwd1), Some(pwd1)))
+    Database.diff(db, v(2), v(3)) === Map("service3" -> (None, Some(pwd3)), "service2" -> (Some(pwd2), Some(pwd2)), "service1" -> (Some(pwd1), Some(pwd1)))
+    Database.diff(db, v(3), v(4)) === Map("service3" -> (Some(pwd3), Some(pwd3)), "service2" -> (Some(pwd2), Some(pwd2)), "service1" -> (Some(pwd1), Some(pwd4)))
+    Database.diff(db, v(4), v(5)) === Map("service2" -> (Some(pwd2), None), "service1" -> (Some(pwd4), Some(pwd4)), "service3" -> (Some(pwd3), Some(pwd3)))
+
+    Database.diff(db, v(0), v(5)) === Map("service1" -> (None, Some(pwd4)), "service3" -> (None, Some(pwd3)))
+    Database.diff(db, v(3), v(5)) === Map("service2" -> (Some(pwd2), None), "service3" -> (Some(pwd3), Some(pwd3)), "service1" -> (Some(pwd1), Some(pwd4)))
+  }
 }

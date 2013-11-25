@@ -29,6 +29,9 @@ case class Database(
 
   def currentPasswords: List[PasswordEntry] =
     versions(0).passwordIds.map(passwordById(_).get)
+
+  def passwords(version: DatabaseVersion): List[PasswordEntry] = 
+    version.passwordIds.map(passwordById(_).get)    
 }
 
 case class DatabaseVersion(
@@ -100,6 +103,24 @@ object Database {
       case Some(pwd) => updatePassword(db, pwd.copy(id = UUID.randomUUID(), password = password))
       case _ => throw new Exception(s"Password with key ${key} does not exist")
     }
+
+  def diff(db: Database, v1: DatabaseVersion, v2: DatabaseVersion): Map[String, (Option[PasswordEntry], Option[PasswordEntry])] = {
+    val pwds1 = db.passwords(v1)
+    val pwds2 = db.passwords(v2)
+
+    val removedKeys = pwds1.map(_.key).diff(pwds2.map(_.key))
+    val addedKeys = pwds2.map(_.key).diff(pwds1.map(_.key))
+    val remainingKeys = pwds1.map(_.key).intersect(pwds2.map(_.key))
+
+    val removed = removedKeys.map(k => pwds1.find(_.key == k).get)
+      .map(pwd => (pwd.key, (Some(pwd), None))).toMap
+    val added = addedKeys.map(k => pwds2.find(_.key == k).get)
+      .map(pwd => (pwd.key, (None, Some(pwd)))).toMap
+    val remaining = remainingKeys.map(k => (pwds1.find(_.key == k). get, pwds2.find(_.key == k).get))
+      .map(pwds => (pwds._1.key, (Some(pwds._1), Some(pwds._2))))
+
+    removed ++ added ++ remaining
+  }
 
   private def alter(db: Database, passwordId: List[UUID], passwords: List[PasswordEntry]): Database = {
     val id = UUID.randomUUID()
