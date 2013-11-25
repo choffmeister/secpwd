@@ -1,6 +1,7 @@
 package de.choffmeister.secpwd.security
 
 import de.choffmeister.secpwd.security.RandomGenerator._
+import de.choffmeister.securestring.SecureString
 
 case class PasswordCharacters(val alphaLower: Boolean = false, val alphaUpper: Boolean = false, val numbers: Boolean = false, val special: Boolean = false, val other: Boolean = false)
 
@@ -19,34 +20,40 @@ object PasswordCharacters {
     result
   }
 
-  def categorize(password: Array[Char]): PasswordCharacters = {
-    var result = PasswordCharacters()
-    for (c <- password) {
-      if (alphaLowerChars.contains(c)) result = result.copy(alphaLower = true)
-      if (alphaUpperChars.contains(c)) result = result.copy(alphaUpper = true)
-      if (numbersChars.contains(c)) result = result.copy(numbers = true)
-      if (specialChars.contains(c)) result = result.copy(special = true)
-      if (!alphaLowerChars.contains(c) && !alphaUpperChars.contains(c) && !numbersChars.contains(c) && !specialChars.contains(c))
-        result = result.copy(other = true)
+  def categorize(password: SecureString): PasswordCharacters = {
+    password.read { plain =>
+      var result = PasswordCharacters()
+      for (c <- plain) {
+        if (alphaLowerChars.contains(c)) result = result.copy(alphaLower = true)
+        if (alphaUpperChars.contains(c)) result = result.copy(alphaUpper = true)
+        if (numbersChars.contains(c)) result = result.copy(numbers = true)
+        if (specialChars.contains(c)) result = result.copy(special = true)
+        if (!alphaLowerChars.contains(c) && !alphaUpperChars.contains(c) && !numbersChars.contains(c) && !specialChars.contains(c))
+          result = result.copy(other = true)
+      }
+      result
     }
-    result
   }
 }
 
 object PasswordUtils {
-  def generate(length: Int = 32, characters: PasswordCharacters): Array[Char] = {
+  def generate(length: Int = 32, characters: PasswordCharacters): SecureString = {
     val chars = PasswordCharacters.chars(characters)
-    val pwd = (1 to length).map(i => chars(generateRandomInt(chars.length))).toArray
+    val plain = new Array[Char](length)
+    for (i <- 0 until length) plain(i) = chars(generateRandomInt(chars.length))
+    val pwd = SecureString(plain)
 
     if (PasswordCharacters.categorize(pwd) == characters) pwd
     else generate(length, characters)
   }
 
-  def getBitEntropy(password: Array[Char]): Int = {
-    var characters = PasswordCharacters.categorize(password)
-    val count = PasswordCharacters.chars(characters).length
-    val length = password.length
+  def getBitEntropy(password: SecureString): Int = {
+    password.read { plain =>
+      val characters = PasswordCharacters.categorize(password)
+      val count = PasswordCharacters.chars(characters).length
+      val length = plain.length
 
-    Math.ceil(Math.log10(count) / Math.log10(2) * length).asInstanceOf[Int]
+      Math.ceil(Math.log10(count) / Math.log10(2) * length).asInstanceOf[Int]
+    }
   }
 }

@@ -9,12 +9,30 @@ import de.choffmeister.secpwd.utils.RichFile._
 import de.choffmeister.secpwd.utils.RichStream._
 import de.choffmeister.secpwd.security.Encryptor._
 import de.choffmeister.secpwd.security.RandomGenerator._
+import de.choffmeister.securestring.SecureString
 
 case class Database(
   id: UUID,
   timeStamp: Date,
   parentIds: List[UUID],
   passwords: List[PasswordEntry] = Nil
+)
+
+abstract class BaseEntry
+
+case class CustomEntry(
+  key: String,
+  value: String
+) extends BaseEntry
+
+case class PasswordEntry(
+  id: String,
+  timeStamp: Date,
+  name: String,
+  password: SecureString,
+  userName: String = "",
+  description: String = "",
+  customFields: List[CustomEntry] = Nil
 )
 
 case class DatabaseCryptoInfo(deriveIterations: Int, macSalt: Array[Byte], encSalt: Array[Byte], iv: Array[Byte])
@@ -33,7 +51,7 @@ object Database {
     alter(db, db.passwords.filter(_.id != id))
   def updatePassword(db: Database, password: PasswordEntry): Database =
     alter(db, password :: db.passwords.filter(_.id != password.id))
-  def updatePassword(db: Database, id: String, password: String) =
+  def updatePassword(db: Database, id: String, password: SecureString) =
     alter(db, db.passwords.find(_.id == id).get.copy(password = password) :: db.passwords.filter(_.id != id))
 
   private def now = new Date()
@@ -57,7 +75,7 @@ object Database {
     output.writeString(pwd.id)
     output.writeDate(pwd.timeStamp)
     output.writeString(pwd.name)
-    output.writeString(pwd.password)
+    output.writeSecureString(pwd.password)
     output.writeString(pwd.userName)
     output.writeString(pwd.description)
     output.writeInt32(pwd.customFields.length)
@@ -88,7 +106,7 @@ object Database {
       input.readString(),
       input.readDate(),
       input.readString(),
-      input.readString(),
+      input.readSecureString(),
       input.readString(),
       input.readString(),
       (1 to input.readInt32()).map(i => deserializeCustomEntry(input)).toList
@@ -102,7 +120,7 @@ object Database {
     )
   }
 
-  def serialize(passphrase: Array[Char], path: File, db: Database): Unit = {
+  def serialize(passphrase: SecureString, path: File, db: Database): Unit = {
     val cryptinfo = DatabaseCryptoInfo(1024 * 16, generateRandomOctets(128), generateRandomOctets(128), generateRandomOctets(16))
     val bs = new ByteArrayOutputStream()
 
@@ -125,7 +143,7 @@ object Database {
     path.bytes = allBytes
   }
 
-  def deserialize(passphrase: Array[Char], path: File): Database = {
+  def deserialize(passphrase: SecureString, path: File): Database = {
     val allBytes = path.bytes
     val bs = new ByteArrayInputStream(allBytes)
 
@@ -178,20 +196,3 @@ object Database {
     else compareByteArrayChunks(arr1, off1 + 1, arr2, off2 + 1, len - 1)
   }
 }
-
-abstract class BaseEntry
-
-case class CustomEntry(
-  key: String,
-  value: String
-) extends BaseEntry
-
-case class PasswordEntry(
-  id: String,
-  timeStamp: Date,
-  name: String,
-  password: String,
-  userName: String = "",
-  description: String = "",
-  customFields: List[CustomEntry] = Nil
-) extends BaseEntry

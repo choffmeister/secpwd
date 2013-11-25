@@ -1,5 +1,7 @@
 package de.choffmeister.secpwd.utils
 
+import de.choffmeister.securestring.SecureString
+
 object InteractiveConsole {
   def read[T](label: String, conv: String => T): Option[T] = {
     print(formatLabel(label))
@@ -21,11 +23,11 @@ object InteractiveConsole {
 
   def readWithDefault(label: String, default: String): String = readWithDefault(label, default, s => s)
 
-  def readStringSecure(label: String): Option[Array[Char]] = {
+  def readSecureString(label: String): Option[SecureString] = {
     val console = Option(System.console())
     console match {
       case Some(c) => c.readPassword(formatLabel(label)) match {
-        case ss if ss.length > 0 => Some(ss)
+        case ss if ss.length > 0 => Some(SecureString(ss))
         case _ => None
       }
       case _ => throw new Exception("No console available")

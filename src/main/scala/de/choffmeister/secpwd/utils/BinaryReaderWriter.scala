@@ -1,12 +1,9 @@
 package de.choffmeister.secpwd.utils
 
-import java.util.UUID
-import java.util.Date
-import java.io.OutputStream
-import java.io.InputStream
-import java.io.EOFException
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
+import java.util._
+import java.io._
+import java.nio._
+import de.choffmeister.securestring.SecureString
 import scala.annotation.tailrec
 import scala.language.implicitConversions
 
@@ -44,6 +41,10 @@ class BinaryWriter(val stream: OutputStream) {
     val bytes = value.getBytes("UTF-8")
     writeInt64(bytes.length)
     writeToStream(stream, bytes, 0, bytes.length)
+  }
+
+  def writeSecureString(value: SecureString): Unit = {
+    value.readBytes(writeBinary(_))
   }
 
   def writeBinary(value: Seq[Byte]): Unit = {
@@ -110,6 +111,10 @@ class BinaryReader(val stream: InputStream) {
     val stringBuf = new Array[Byte](length)
     readFromStream(stream, stringBuf, 0, length)
     return new String(stringBuf, "UTF-8")
+  }
+
+  def readSecureString(): SecureString = {
+    new SecureString(readBinary())
   }
 
   def readBinary(): Array[Byte] = {

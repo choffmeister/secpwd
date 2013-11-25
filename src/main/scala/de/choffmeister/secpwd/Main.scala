@@ -9,41 +9,42 @@ import de.choffmeister.secpwd.security.PasswordUtils
 import de.choffmeister.secpwd.security.PasswordCharacters
 import de.choffmeister.secpwd.utils.InteractiveConsole
 import de.choffmeister.secpwd.utils.RichFile._
+import de.choffmeister.securestring.SecureString
 
-class Main(val directory: File, passphrase: => Array[Char]) {
+class Main(val directory: File) {
   if (!directory.exists()) directory.mkdirs()
 
-  def init(): Database = {
+  def init(passphrase: SecureString): Database = {
     val db = Database.create()
     Database.serialize(passphrase, path(db.id), db)
     head = db.id
     db
   }
 
-  def show(id: String): Option[PasswordEntry] = {
+  def show(passphrase: SecureString, id: String): Option[PasswordEntry] = {
     val db = Database.deserialize(passphrase, path(head))
     db.passwords.find(_.id == id)
   }
   
-  def list(): List[PasswordEntry] = {
+  def list(passphrase: SecureString): List[PasswordEntry] = {
     val db = Database.deserialize(passphrase, path(head))
     db.passwords
   }
 
-  def add(id: String, name: String, password: Either[Array[Char], (PasswordCharacters, Int)]): PasswordEntry = {
+  def add(passphrase: SecureString, id: String, name: String, password: Either[SecureString, (PasswordCharacters, Int)]): PasswordEntry = {
     val db1 = Database.deserialize(passphrase, path(head))
     val pwd = password match {
       case Left(pwd) => pwd
       case Right((chars, len)) => PasswordUtils.generate(len, chars)
     }
-    val entry = PasswordEntry(id, new Date(), name, pwd.mkString(""))
+    val entry = PasswordEntry(id, new Date(), name, pwd)
     val db2 = Database.addPassword(db1, entry)
     Database.serialize(passphrase, path(db2.id), db2)
     head = db2.id
     entry
   }
 
-  def remove(id: String) {
+  def remove(passphrase: SecureString, id: String) {
     val db1 = Database.deserialize(passphrase, path(head))
     val db2 = Database.removePasswordById(db1, id)
     Database.serialize(passphrase, path(db2.id), db2)
@@ -60,30 +61,33 @@ object Main {
 
   def main(args: Array[String]): Unit = {
     try {
-      val main = new Main(directory, passphrase)
+      val main = new Main(directory)
       val cli = new CommandLineInterface(args)
       cli.subcommand match {
         case Some(cli.init) =>
-          main.init()
+          passphrase(main.init(_))
         case Some(cli.list) =>
-          for (pwd <- main.list) {
+          for (pwd <- passphrase(main.list(_))) {
             println(s"[${pwd.id}] ${pwd.name}")
           }
         case Some(cli.show) =>
-          main.show(cli.show.id()) match {
+          passphrase(main.show(_, cli.show.id())) match {
             case Some(pwd) =>
               println(pwd.id)
               println(pwd.timeStamp)
               println(pwd.name)
-              println(pwd.password)
               println(pwd.userName)
+              if (cli.show.printPassword()) {
+                pwd.password.read(_.foreach(print(_)))
+                println()
+              }
             case _ =>
               println(s"Cannot find password ${cli.show.id()}")
           }
         case Some(cli.add) =>
           val name = InteractiveConsole.read("Name").get
           val id = InteractiveConsole.readWithDefault("Key", name.toLowerCase)
-          val pwdInteractive = InteractiveConsole.readStringSecure("Password")
+          val pwdInteractive = InteractiveConsole.readSecureString("Password")
           val pwd = pwdInteractive match {
             case Some(pwd) =>
               Left(pwd)
@@ -95,7 +99,7 @@ object Main {
               val special = InteractiveConsole.readWithDefault[Boolean]("Use special characters?", true, _.toBoolean)
               Right((PasswordCharacters(alphaLower, alphaUpper, numbers, special), length))
           }
-          main.add(id, name, pwd)
+          passphrase(main.add(_, id, name, pwd))
         case _ =>
           cli.printHelp()
       }
@@ -104,9 +108,14 @@ object Main {
     }
   }
 
-  lazy val passphrase: Array[Char] = InteractiveConsole.readStringSecure("Passphrase") match {
-    case Some(pp) => pp
-    case _ => passphrase
+  def passphrase[T](inner: SecureString => T): T = InteractiveConsole.readSecureString("Passphrase") match {
+    case Some(pp) =>
+      try {
+        inner(pp)
+      } finally {
+        pp.wipe()
+      }
+    case _ => passphrase(inner)
   }
 
   class CommandLineInterface(val arguments: Seq[String]) extends ScallopConf(arguments) {
@@ -116,6 +125,7 @@ object Main {
     val list = new Subcommand("list")
     val show = new Subcommand("show") {
       val id = trailArg[String]("id")
+      val printPassword = opt[Boolean]("print-password", 'p')
     }
     val add = new Subcommand("add")
     val remove = new Subcommand("rm") {

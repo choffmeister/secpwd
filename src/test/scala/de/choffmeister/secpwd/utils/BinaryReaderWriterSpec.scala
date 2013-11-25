@@ -5,6 +5,7 @@ import org.specs2.runner.JUnitRunner
 import org.junit.runner.RunWith
 import java.util.{UUID, Date}
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
+import de.choffmeister.securestring.SecureString
 
 @RunWith(classOf[JUnitRunner])
 class BinaryReaderWriterSpec extends Specification {
@@ -157,6 +158,26 @@ class BinaryReaderWriterSpec extends Specification {
       reader.readString() === "foo"
       reader.readString() === ""
       reader.readString() === "äöü"
+    }
+
+    "read and write SecureString" in {
+      val streamWrite = new ByteArrayOutputStream()
+      val writer = new BinaryWriter(streamWrite)
+
+      writer.writeSecureString(SecureString("foo".toCharArray))
+      writer.writeSecureString(SecureString("".toCharArray))
+      writer.writeSecureString(SecureString("äöü".toCharArray))
+      writer.close()
+
+      val buf = streamWrite.toByteArray()
+      buf.length === 33
+
+      val streamRead = new ByteArrayInputStream(buf)
+      val reader = new BinaryReader(streamRead)
+
+      reader.readSecureString().read(_.mkString === "foo")
+      reader.readSecureString().read(_.mkString === "")
+      reader.readSecureString().read(_.mkString === "äöü")
     }
 
     "read and write Binary" in {
