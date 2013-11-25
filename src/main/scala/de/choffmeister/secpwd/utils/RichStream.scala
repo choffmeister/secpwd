@@ -13,6 +13,7 @@ import scala.language.implicitConversions
 
 class RichInputStream(val stream: InputStream) {
   def preSizedInner(size: Long)(inner: InputStream => Any) {
+    if (size < 0) throw new IndexOutOfBoundsException()
     val wrapper = new PreSizedInnerInputStream(size, stream)
     try {
       inner(wrapper)
@@ -33,15 +34,12 @@ class RichInputStream(val stream: InputStream) {
         if (b >= 0) {
           position += 1
           b
-        } else -1
+        } else throw new EOFException()
       } else -1
     }
 
     override def close(): Unit = {
-      while (position < size) {
-        val b = read()
-        if (b < 0) throw new EOFException()
-      }
+      while (position < size) read()
       super.close()
     }
   }
@@ -49,6 +47,7 @@ class RichInputStream(val stream: InputStream) {
 
 class RichOutputStream(val stream: OutputStream) {
   def preSizedInner(size: Long)(inner: OutputStream => Any) {
+    if (size < 0) throw new IndexOutOfBoundsException()
     val wrapper = new PreSizedInnerOutputStream(size, stream)
     try {
       inner(wrapper)

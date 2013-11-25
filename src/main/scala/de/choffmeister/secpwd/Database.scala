@@ -61,6 +61,7 @@ class DatabaseSerializationException(message: String) extends Exception(message)
 
 object Database {
   val MAGIC_BYTES = Array[Byte](115, 99, 112, 100)
+  val VERSION = 1.toByte
 
   def create(): Database = {
     val id = UUID.randomUUID()
@@ -195,6 +196,7 @@ object Database {
     val bs = new ByteArrayOutputStream()
 
     bs.writeBytesRaw(MAGIC_BYTES)
+    bs.writeInt8(VERSION)
 
     writeBlock(bs) { ms =>
       ms.writeInt32(cryptinfo.deriveIterations)
@@ -219,6 +221,8 @@ object Database {
 
     val magicbytes = bs.readBytesRaw(4)
     if (!compareByteArrays(magicbytes, MAGIC_BYTES)) throw new DatabaseSerializationException("Invalid magic bytes")
+    val version = bs.readInt8()
+    if (version != VERSION) throw new DatabaseSerializationException("Invalid version")
 
     val cryptoinfo = readBlock(bs) { ms =>
       DatabaseCryptoInfo(
@@ -229,14 +233,13 @@ object Database {
       )
     }
 
+    val signature = allBytes.drop(allBytes.length - 64)
+    val calcSignature = hmacSha512(allBytes.take(allBytes.length - 64), passphrase, cryptoinfo.deriveIterations, cryptoinfo.macSalt)
+    if (!compareByteArrays(calcSignature, signature)) throw new DatabaseSerializationException("Invalid passphrase")
+
     val encrypted = readBlock(bs) { ms =>
       ms.readBinary()
     }
-
-    val signature = bs.readBytesRaw(64)
-
-    val calcSignature = hmacSha512(allBytes.take(allBytes.length - 64), passphrase, cryptoinfo.deriveIterations, cryptoinfo.macSalt)
-    if (!compareByteArrays(calcSignature, signature)) throw new DatabaseSerializationException("Invalid passphrase")
 
     deserializeDatabase(decryptAes128(encrypted, passphrase, cryptoinfo.deriveIterations, cryptoinfo.encSalt, cryptoinfo.iv))
   }

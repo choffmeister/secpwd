@@ -65,23 +65,20 @@ class MainSpec extends Specification {
     path.bytes = alterByte(original, 0)
     main.list(pp) must throwA[DatabaseSerializationException]
 
-    path.bytes = alterByte(original, 5)
-    main.list(pp) must throwA[EOFException]
-
-    path.bytes = alterByte(original, 10)
-    main.list(pp) must throwA
+    path.bytes = alterByte(original, 4)
+    main.list(pp) must throwA[DatabaseSerializationException]
 
     path.bytes = alterByte(original, 20)
-    main.list(pp) must throwA[DatabaseSerializationException]
+    main.list(pp) must throwA
 
     path.bytes = dropByte(original, original.length - 1)
-    main.list(pp) must throwA[EOFException]
+    main.list(pp) must throwA
 
     path.bytes = alterByte(original, original.length - 1)
-    main.list(pp) must throwA[DatabaseSerializationException]
+    main.list(pp) must throwA
 
     path.bytes = original ++ Array[Byte](1)
-    main.list(pp) must throwA[DatabaseSerializationException]
+    main.list(pp) must throwA
 
     ok
   }
