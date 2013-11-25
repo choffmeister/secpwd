@@ -89,7 +89,9 @@ object Database {
 
   def updatePassword(db: Database, password: PasswordEntry): Database =
     db.currentPasswordByKey(password.key) match {
-      case Some(pwd) => alter(db, password.id :: db.versions(0).passwordIds.filter(_ != pwd.id), password :: db.passwords)
+      case Some(pwd) => 
+        if (db.passwordById(password.id).isDefined) throw new Exception(s"Cannot update a password with a password of same id")
+        alter(db, password.id :: db.versions(0).passwordIds.filter(_ != pwd.id), password :: db.passwords)
       case _ => throw new Exception(s"Password with key ${password.key} does not exist")
     }
 

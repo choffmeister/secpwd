@@ -64,7 +64,7 @@ class DatabaseSpec extends Specification {
     val db2 = Database.addPassword(db1, pwd1)
     val pwd2 = PasswordEntry(UUID.randomUUID(), new Date(1), "service2", "Service #2", SecureString("password2".toCharArray))
     val db3 = Database.addPassword(db2, pwd2)
-    val pwd3 = pwd1.copy(timeStamp = new Date(2), password = SecureString("password1-new".toCharArray))
+    val pwd3 = pwd1.copy(id = UUID.randomUUID(), timeStamp = new Date(2), password = SecureString("password1-new".toCharArray))
     val db4 = Database.updatePassword(db3, pwd3)
     val db5 = Database.updatePassword(db4, pwd2.key, SecureString("password2-new".toCharArray))
 
@@ -82,6 +82,11 @@ class DatabaseSpec extends Specification {
     db4.passwords === List(pwd3, pwd2, pwd1)
     db3.versions === List(v3, v2, v1)
     db3.passwords === List(pwd2, pwd1)
+    db2.versions === List(v2, v1)
+    db2.passwords === List(pwd1)
+    db1.versions === List(v1)
+    db1.passwords === List()
+    db5.passwords.map(_.id).distinct must haveSize(4)
   }
 
   "deseralize and serialize databases" in {
