@@ -12,7 +12,7 @@ class DatabaseSpec extends Specification {
   "start empty" in {
     val db = Database.create()
 
-    db.versions === List(DatabaseVersion(db.id, db.timeStamp, Nil, Nil))
+    db.versions === List(DatabaseVersion(db.id, db.timeStamp, 0, Nil, Nil))
     db.passwords === Nil
   }
 
@@ -23,9 +23,9 @@ class DatabaseSpec extends Specification {
     val pwd2 = PasswordEntry(UUID.randomUUID(), new Date(1), "service2", "Service #2", SecureString("password2".toCharArray))
     val db3 = Database.addPassword(db2, pwd2)
 
-    val v1 = DatabaseVersion(db1.id, db1.timeStamp, Nil, Nil)
-    val v2 = DatabaseVersion(db2.id, db2.timeStamp, List(db1.id), List(pwd1.id))
-    val v3 = DatabaseVersion(db3.id, db3.timeStamp, List(db2.id), List(pwd2.id, pwd1.id))
+    val v1 = DatabaseVersion(db1.id, db1.timeStamp, 0, Nil, Nil)
+    val v2 = DatabaseVersion(db2.id, db2.timeStamp, 1, List(db1.id), List(pwd1.id))
+    val v3 = DatabaseVersion(db3.id, db3.timeStamp, 2, List(db2.id), List(pwd2.id, pwd1.id))
 
     db1.versions === List(v1)
     db1.passwords === List()
@@ -44,11 +44,11 @@ class DatabaseSpec extends Specification {
     val db4 = Database.removePasswordByKey(db3, pwd1.key)
     val db5 = Database.removePasswordByKey(db4, pwd2.key)
 
-    val v1 = DatabaseVersion(db1.id, db1.timeStamp, Nil, Nil)
-    val v2 = DatabaseVersion(db2.id, db2.timeStamp, List(db1.id), List(pwd1.id))
-    val v3 = DatabaseVersion(db3.id, db3.timeStamp, List(db2.id), List(pwd2.id, pwd1.id))
-    val v4 = DatabaseVersion(db4.id, db4.timeStamp, List(db3.id), List(pwd2.id))
-    val v5 = DatabaseVersion(db5.id, db5.timeStamp, List(db4.id), Nil)
+    val v1 = DatabaseVersion(db1.id, db1.timeStamp, 0, Nil, Nil)
+    val v2 = DatabaseVersion(db2.id, db2.timeStamp, 1, List(db1.id), List(pwd1.id))
+    val v3 = DatabaseVersion(db3.id, db3.timeStamp, 2, List(db2.id), List(pwd2.id, pwd1.id))
+    val v4 = DatabaseVersion(db4.id, db4.timeStamp, 3, List(db3.id), List(pwd2.id))
+    val v5 = DatabaseVersion(db5.id, db5.timeStamp, 4, List(db4.id), Nil)
 
     db3.versions === List(v3, v2, v1)
     db3.passwords === List(pwd2, pwd1)
@@ -69,11 +69,11 @@ class DatabaseSpec extends Specification {
     val db5 = Database.updatePassword(db4, pwd2.key, SecureString("password2-new".toCharArray))
 
     val pwd4 = db5.passwords(0)
-    val v1 = DatabaseVersion(db1.id, db1.timeStamp, Nil, Nil)
-    val v2 = DatabaseVersion(db2.id, db2.timeStamp, List(db1.id), List(pwd1.id))
-    val v3 = DatabaseVersion(db3.id, db3.timeStamp, List(db2.id), List(pwd2.id, pwd1.id))
-    val v4 = DatabaseVersion(db4.id, db4.timeStamp, List(db3.id), List(pwd3.id, pwd2.id))
-    val v5 = DatabaseVersion(db5.id, db5.timeStamp, List(db4.id), List(pwd4.id, pwd3.id))
+    val v1 = DatabaseVersion(db1.id, db1.timeStamp, 0, Nil, Nil)
+    val v2 = DatabaseVersion(db2.id, db2.timeStamp, 1, List(db1.id), List(pwd1.id))
+    val v3 = DatabaseVersion(db3.id, db3.timeStamp, 2, List(db2.id), List(pwd2.id, pwd1.id))
+    val v4 = DatabaseVersion(db4.id, db4.timeStamp, 3, List(db3.id), List(pwd3.id, pwd2.id))
+    val v5 = DatabaseVersion(db5.id, db5.timeStamp, 4, List(db4.id), List(pwd4.id, pwd3.id))
 
     pwd4.password.read(_.mkString === "password2-new")
     db5.versions === List(v5, v4, v3, v2, v1)
@@ -127,5 +127,35 @@ class DatabaseSpec extends Specification {
 
     Database.diff(db, v(0), v(5)) === Map("service1" -> (None, Some(pwd4)), "service3" -> (None, Some(pwd3)))
     Database.diff(db, v(3), v(5)) === Map("service2" -> (Some(pwd2), None), "service3" -> (Some(pwd3), Some(pwd3)), "service1" -> (Some(pwd1), Some(pwd4)))
+  }
+
+  "find lowest common ancestor" in {
+    val db1 = Database.create()
+    val pwd1 = PasswordEntry(UUID.randomUUID(), new Date(0), "service1", "Service #1", SecureString("password1".toCharArray))
+    val db2 = Database.addPassword(db1, pwd1)
+    val pwd2 = PasswordEntry(UUID.randomUUID(), new Date(1), "service2", "Service #2", SecureString("password2".toCharArray))
+    val db3 = Database.addPassword(db2, pwd2)
+
+    val pwd3a = PasswordEntry(UUID.randomUUID(), new Date(2), "service3a", "Service #3a", SecureString("password3a".toCharArray))
+    val db4a = Database.addPassword(db3, pwd3a)
+    val pwd4a = PasswordEntry(UUID.randomUUID(), new Date(2), "service4a", "Service #4a", SecureString("password4a".toCharArray))
+    val db5a = Database.addPassword(db4a, pwd4a)
+    val pwd5a = PasswordEntry(UUID.randomUUID(), new Date(2), "service5a", "Service #5a", SecureString("password5a".toCharArray))
+    val db6a = Database.addPassword(db5a, pwd5a)
+
+    val pwd3b = PasswordEntry(UUID.randomUUID(), new Date(2), "service3b", "Service #3b", SecureString("password3b".toCharArray))
+    val db4b = Database.addPassword(db3, pwd3b)
+    val pwd4b = PasswordEntry(UUID.randomUUID(), new Date(2), "service4b", "Service #4b", SecureString("password4b".toCharArray))
+    val db5b = Database.addPassword(db4b, pwd4b)
+    val pwd5b = PasswordEntry(UUID.randomUUID(), new Date(2), "service5b", "Service #5b", SecureString("password5b".toCharArray))
+    val db6b = Database.addPassword(db5b, pwd5b)
+
+    Database.lowestCommonAncestor(db3, db3.versions(0), db3, db3.versions(0)) === db3.versions(0)
+    Database.lowestCommonAncestor(db1, db1.versions(0), db3, db3.versions(0)) === db1.versions(0)
+    Database.lowestCommonAncestor(db3, db3.versions(0), db1, db1.versions(0)) === db1.versions(0)
+    Database.lowestCommonAncestor(db4a, db4a.versions(0), db4b, db4b.versions(0)) === db3.versions(0)
+    Database.lowestCommonAncestor(db5a, db5a.versions(0), db5b, db5b.versions(0)) === db3.versions(0)
+    Database.lowestCommonAncestor(db6a, db6a.versions(0), db6b, db5b.versions(0)) === db3.versions(0)
+    Database.lowestCommonAncestor(db4a, db4a.versions(0), db6b, db5b.versions(0)) === db3.versions(0)
   }
 }

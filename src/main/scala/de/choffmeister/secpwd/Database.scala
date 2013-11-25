@@ -37,6 +37,7 @@ case class Database(
 case class DatabaseVersion(
   versionId: UUID,
   timeStamp: Date,
+  depth: Int,
   parentVersionIds: List[UUID] = Nil,
   passwordIds: List[UUID] = Nil
 )
@@ -69,7 +70,7 @@ object Database {
   def create(): Database = {
     val id = UUID.randomUUID()
     val now = new Date()
-    Database(id, now, List(DatabaseVersion(id, now)))
+    Database(id, now, List(DatabaseVersion(id, now, 0)))
   }
 
   def addPassword(db: Database, password: PasswordEntry): Database =
@@ -122,10 +123,46 @@ object Database {
     removed ++ added ++ remaining
   }
 
+  def lowestCommonAncestor(db1: Database, v1: DatabaseVersion, db2: Database, v2: DatabaseVersion): DatabaseVersion = {
+    @scala.annotation.tailrec
+    def recursion(l1: List[DatabaseVersion], l2: List[DatabaseVersion]): DatabaseVersion =
+      l1.intersect(l2) match {
+        case lca :: rest :: Nil => throw new Exception()
+        case lca :: Nil => lca
+        case _ =>
+          val md1 = l1.map(_.depth).max
+          val md2 = l2.map(_.depth).max
+          var nl1 = l1
+          var nl2 = l2
+          
+          if (md1 >= md2) {
+            val h = nl1.head
+            nl1 = nl1.tail
+            for (p <- h.parentVersionIds.map(pid => db1.versions.find(_.versionId == pid).get))
+              nl1 = sortedInsert[DatabaseVersion](nl1, p, (a, b) => a.depth >= b.depth)
+          } else {
+            val h = nl2.head
+            nl2 = nl2.tail
+            for (p <- h.parentVersionIds.map(pid => db2.versions.find(_.versionId == pid).get))
+              nl2 = sortedInsert[DatabaseVersion](nl2, p, (a, b) => a.depth >= b.depth)
+          }
+          recursion(nl1, nl2)
+      }
+
+    def sortedInsert[T](l: List[T], it: T, order: (T, T) => Boolean): List[T] = l match {
+      case Nil => List(it)
+      case first :: rest =>
+        if (order(it, first)) it :: l
+        else first :: sortedInsert(rest, it, order)
+      }
+
+    recursion(List(v1), List(v2))
+  }
+
   private def alter(db: Database, passwordId: List[UUID], passwords: List[PasswordEntry]): Database = {
     val id = UUID.randomUUID()
     val now = new Date()
-    db.copy(id = id, timeStamp = now, versions = DatabaseVersion(id, now, List(db.id), passwordId) :: db.versions, passwords = passwords)
+    db.copy(id = id, timeStamp = now, versions = DatabaseVersion(id, now, db.versions(0).depth + 1, List(db.id), passwordId) :: db.versions, passwords = passwords)
   }
 
   def serializeDatabase(db: Database): Array[Byte] = {
@@ -146,6 +183,7 @@ object Database {
   def serializeDatabaseVersion(output: OutputStream, version: DatabaseVersion): Unit = {
     output.writeUUID(version.versionId)
     output.writeDate(version.timeStamp)
+    output.writeInt32(version.depth)
     output.writeInt32(version.parentVersionIds.length)
     version.parentVersionIds.foreach(output.writeUUID(_))
     output.writeInt32(version.passwordIds.length)
@@ -188,6 +226,7 @@ object Database {
     DatabaseVersion(
       input.readUUID(),
       input.readDate(),
+      input.readInt32(),
       (1 to input.readInt32()).map(i => input.readUUID()).toList,
       (1 to input.readInt32()).map(i => input.readUUID()).toList
     )
