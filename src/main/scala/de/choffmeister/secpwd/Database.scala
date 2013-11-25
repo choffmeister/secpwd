@@ -71,32 +71,32 @@ object Database {
 
   def addPassword(db: Database, password: PasswordEntry): Database =
     db.currentPasswordByKey(password.key) match {
-      case Some(pwd) => throw new Exception()
+      case Some(pwd) => throw new Exception(s"Password with key ${password.key} already exists")
       case _ => alter(db, password.id :: db.versions(0).passwordIds, password :: db.passwords)
     }
 
   def removePasswordById(db: Database, id: UUID): Database =
     db.passwordById(id) match {
       case Some(pwd) => alter(db, db.versions(0).passwordIds.filter(_ != id), db.passwords)
-      case _ => throw new Exception()
+      case _ => throw new Exception(s"Password with id ${id} does not exist")
     }
 
   def removePasswordByKey(db: Database, key: String): Database =
     db.currentPasswordByKey(key) match {
       case Some(pwd) => removePasswordById(db, pwd.id)
-      case _ => throw new Exception()
+      case _ => throw new Exception(s"Password with key ${key} does not exist")
     }
 
   def updatePassword(db: Database, password: PasswordEntry): Database =
     db.currentPasswordByKey(password.key) match {
       case Some(pwd) => alter(db, password.id :: db.versions(0).passwordIds.filter(_ != pwd.id), password :: db.passwords)
-      case _ => throw new Exception()
+      case _ => throw new Exception(s"Password with key ${password.key} does not exist")
     }
 
   def updatePassword(db: Database, key: String, password: SecureString): Database =
     db.currentPasswordByKey(key) match {
       case Some(pwd) => updatePassword(db, pwd.copy(id = UUID.randomUUID(), password = password))
-      case _ => throw new Exception()
+      case _ => throw new Exception(s"Password with key ${key} does not exist")
     }
 
   private def alter(db: Database, passwordId: List[UUID], passwords: List[PasswordEntry]): Database = {

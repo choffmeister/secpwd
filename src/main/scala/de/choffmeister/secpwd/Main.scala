@@ -80,23 +80,27 @@ object Main {
       cli.subcommand match {
         case Some(cli.init) =>
           passphrase(main.init(_))
+          printSuccess("Created new password store")
         case Some(cli.list) =>
           for (pwd <- passphrase(main.list(_))) {
-            println(s"[${pwd.key}] ${pwd.name} (${PasswordUtils.getBitEntropy(pwd.password)} bits) ${pwd.timeStamp}")
+            printInfo(pwd.key, s"${pwd.name} (${PasswordUtils.getBitEntropy(pwd.password)} bits) ${pwd.timeStamp}")
           }
         case Some(cli.show) =>
           passphrase(main.show(_, cli.show.idOrKey())) match {
             case Some(pwd) =>
-              println(pwd.key)
-              println(pwd.timeStamp)
-              println(pwd.name)
-              println(pwd.userName)
+              printInfo(pwd.key, "Password information")
+              println(s"  Name: ${pwd.name}")
+              println(s"  Timestamp: ${pwd.timeStamp}")
+              if (pwd.userName.length > 0)
+                println(s"  Username: ${pwd.userName}")
+              println(s"  Strength: ${PasswordUtils.getBitEntropy(pwd.password)} bits")
               if (cli.show.printPassword()) {
+                print("  Password: ")
                 pwd.password.read(_.foreach(print(_)))
                 println()
               }
             case _ =>
-              println(s"Cannot find password ${cli.show.idOrKey()}")
+              printError(s"Password ${cli.show.idOrKey()} does not exist")
           }
         case Some(cli.add) =>
           val name = InteractiveConsole.read("Name").get
@@ -114,15 +118,23 @@ object Main {
               Right((PasswordCharacters(alphaLower, alphaUpper, numbers, special), length))
           }
           passphrase(main.add(_, id, name, pwd))
+          printSuccess("Added password")
         case Some(cli.remove) =>
           passphrase(main.remove(_, cli.remove.idOrKey()))
+          printSuccess("Removed password")
         case _ =>
           cli.printHelp()
       }
     } catch {
-      case e: Throwable => println(e.getMessage)
+      case e: Throwable => printError(e.getMessage)
     }
   }
+
+  def printInfo(label: String, message: String) = println(s"[${Console.BLUE}${label}${Console.RESET}] ${message}")
+
+  def printSuccess(message: String) = println(s"[${Console.GREEN}success${Console.RESET}] ${message}")
+
+  def printError(message: String) = println(s"[${Console.RED}error${Console.RESET}] ${message}")
 
   def passphrase[T](inner: SecureString => T): T = InteractiveConsole.readSecureString("Passphrase") match {
     case Some(pp) =>
