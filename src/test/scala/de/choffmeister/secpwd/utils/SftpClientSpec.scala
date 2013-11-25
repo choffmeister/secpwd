@@ -4,21 +4,23 @@ import org.specs2.mutable._
 import org.specs2.runner.JUnitRunner
 import org.junit.runner.RunWith
 import java.util.UUID
-import java.io.{InputStream, ByteArrayInputStream, ByteArrayOutputStream}
+import java.io.{File, InputStream, ByteArrayInputStream, ByteArrayOutputStream}
 
 @RunWith(classOf[JUnitRunner])
 class SftpClientSpec extends Specification {
-  args(skipAll = true)
-
   "read and write files" in {
-    val connInfo = SshConnectionInfo(host = "invalid.domain.tld", userName = "user", password = "pass")
-
     val name = UUID.randomUUID.toString
     val text1 = UUID.randomUUID.toString
-    streamIn(text1)(SftpClient.write(connInfo, "/tmp", name, _))
-    val text2 = streamOut(SftpClient.read(connInfo, "/tmp", name, _))
+    SftpClient.connect(SftpClientSpec.testConnInfo) { session =>
+      streamIn(text1)(session.write("/tmp", name, _) must throwA.not.orSkip)
+      val text2 = streamOut(session.read("/tmp", name, _))
+      text1 === text2
+    } must throwA[SshAuthenticationException].not.orSkip
+  }
 
-    text1 === text2
+  "fail on invalid credentials" in {
+    val connInfo = SshConnectionInfo(host = "localhost", userName = "unknownuser", password = Some("wrong-password"))
+    SftpClient.connect(connInfo)(session => 0 === 1) must throwA[SshAuthenticationException]
   }
 
   def streamIn(content: String)(inner: InputStream => Any): Unit = {
@@ -32,4 +34,12 @@ class SftpClientSpec extends Specification {
     inner(stream)
     new String(stream.toByteArray, "UTF-8")
   }
+}
+
+object SftpClientSpec {
+  val testConnInfo = SshConnectionInfo(
+    host = "localhost",
+    userName = System.getProperty("user.name"),
+    keyFile = Some(new File(new File(new File(System.getProperty("user.home")), ".ssh"), "id-test"))
+  )
 }

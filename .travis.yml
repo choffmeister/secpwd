@@ -2,6 +2,9 @@ language: scala
 scala:
   - 2.10.2
   - 2.10.3
+before_script:
+  - "ssh-keygen -t rsa -b 1024 -f ~/.ssh/id-test -N ''"
+  - "cat ~/.ssh/id-test.pub >> ~/.ssh/authorized_keys"
 script:
   - "sbt ++$TRAVIS_SCALA_VERSION clean scct:test printCoverage"
 branches:
