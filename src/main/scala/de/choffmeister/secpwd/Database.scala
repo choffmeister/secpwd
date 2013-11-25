@@ -11,23 +11,43 @@ import de.choffmeister.secpwd.security.Encryptor._
 import de.choffmeister.secpwd.security.RandomGenerator._
 import de.choffmeister.securestring.SecureString
 
+abstract class BaseEntry {
+  val id: UUID
+}
+
 case class Database(
   id: UUID,
   timeStamp: Date,
-  parentIds: List[UUID],
+  versions: List[DatabaseVersion],
   passwords: List[PasswordEntry] = Nil
+) extends BaseEntry {
+  def passwordById(id: UUID): Option[PasswordEntry] =
+    passwords.find(_.id == id)
+
+  def currentPasswordByKey(key: String): Option[PasswordEntry] =
+    versions(0).passwordIds.map(passwordById(_).get).find(_.key == key)
+
+  def currentPasswords: List[PasswordEntry] =
+    versions(0).passwordIds.map(passwordById(_).get)
+}
+
+case class DatabaseVersion(
+  versionId: UUID,
+  timeStamp: Date,
+  parentVersionIds: List[UUID] = Nil,
+  passwordIds: List[UUID] = Nil
 )
 
-abstract class BaseEntry
-
 case class CustomEntry(
+  id: UUID,
   key: String,
   value: String
 ) extends BaseEntry
 
 case class PasswordEntry(
-  id: String,
+  id: UUID,
   timeStamp: Date,
+  key: String,
   name: String,
   password: SecureString,
   userName: String = "",
@@ -42,19 +62,47 @@ class DatabaseSerializationException(message: String) extends Exception(message)
 object Database {
   val MAGIC_BYTES = Array[Byte](115, 99, 112, 100)
 
-  def create(): Database = Database(UUID.randomUUID, now, Nil)
-  def alter(db: Database, passwords: List[PasswordEntry]): Database =
-    db.copy(id = UUID.randomUUID, timeStamp = now, parentIds = List(db.id), passwords = passwords)
-  def addPassword(db: Database, password: PasswordEntry): Database =
-    alter(db, password :: db.passwords)
-  def removePasswordById(db: Database, id: String) = 
-    alter(db, db.passwords.filter(_.id != id))
-  def updatePassword(db: Database, password: PasswordEntry): Database =
-    alter(db, password :: db.passwords.filter(_.id != password.id))
-  def updatePassword(db: Database, id: String, password: SecureString) =
-    alter(db, db.passwords.find(_.id == id).get.copy(password = password) :: db.passwords.filter(_.id != id))
+  def create(): Database = {
+    val id = UUID.randomUUID()
+    val now = new Date()
+    Database(id, now, List(DatabaseVersion(id, now)))
+  }
 
-  private def now = new Date()
+  def addPassword(db: Database, password: PasswordEntry): Database =
+    db.currentPasswordByKey(password.key) match {
+      case Some(pwd) => throw new Exception()
+      case _ => alter(db, password.id :: db.versions(0).passwordIds, password :: db.passwords)
+    }
+
+  def removePasswordById(db: Database, id: UUID): Database =
+    db.passwordById(id) match {
+      case Some(pwd) => alter(db, db.versions(0).passwordIds.filter(_ != id), db.passwords)
+      case _ => throw new Exception()
+    }
+
+  def removePasswordByKey(db: Database, key: String): Database =
+    db.currentPasswordByKey(key) match {
+      case Some(pwd) => removePasswordById(db, pwd.id)
+      case _ => throw new Exception()
+    }
+
+  def updatePassword(db: Database, password: PasswordEntry): Database =
+    db.currentPasswordByKey(password.key) match {
+      case Some(pwd) => alter(db, password.id :: db.versions(0).passwordIds.filter(_ != pwd.id), password :: db.passwords)
+      case _ => throw new Exception()
+    }
+
+  def updatePassword(db: Database, key: String, password: SecureString): Database =
+    db.currentPasswordByKey(key) match {
+      case Some(pwd) => updatePassword(db, pwd.copy(id = UUID.randomUUID(), password = password))
+      case _ => throw new Exception()
+    }
+
+  private def alter(db: Database, passwordId: List[UUID], passwords: List[PasswordEntry]): Database = {
+    val id = UUID.randomUUID()
+    val now = new Date()
+    db.copy(id = id, timeStamp = now, versions = DatabaseVersion(id, now, List(db.id), passwordId) :: db.versions, passwords = passwords)
+  }
 
   def serializeDatabase(db: Database): Array[Byte] = {
     val tmp = new ByteArrayOutputStream()
@@ -65,15 +113,25 @@ object Database {
   def serializeDatabase(output: OutputStream, db: Database): Unit = {
     output.writeUUID(db.id)
     output.writeDate(db.timeStamp)
-    output.writeInt32(db.parentIds.length)
-    db.parentIds.foreach(output.writeUUID(_))
+    output.writeInt32(db.versions.length)
+    db.versions.foreach(serializeDatabaseVersion(output, _))
     output.writeInt32(db.passwords.length)
     db.passwords.foreach(serializePasswordEnty(output, _))
   }
 
+  def serializeDatabaseVersion(output: OutputStream, version: DatabaseVersion): Unit = {
+    output.writeUUID(version.versionId)
+    output.writeDate(version.timeStamp)
+    output.writeInt32(version.parentVersionIds.length)
+    version.parentVersionIds.foreach(output.writeUUID(_))
+    output.writeInt32(version.passwordIds.length)
+    version.passwordIds.foreach(output.writeUUID(_))
+  }
+  
   def serializePasswordEnty(output: OutputStream, pwd: PasswordEntry): Unit = {
-    output.writeString(pwd.id)
+    output.writeUUID(pwd.id)
     output.writeDate(pwd.timeStamp)
+    output.writeString(pwd.key)
     output.writeString(pwd.name)
     output.writeSecureString(pwd.password)
     output.writeString(pwd.userName)
@@ -83,6 +141,7 @@ object Database {
   }
 
   def serializeCustomEntry(output: OutputStream, cf: CustomEntry): Unit = {
+    output.writeUUID(cf.id)
     output.writeString(cf.key)
     output.writeString(cf.value)
   }
@@ -96,15 +155,25 @@ object Database {
     Database(
       input.readUUID(),
       input.readDate(),
-      (1 to input.readInt32()).map(i => input.readUUID()).toList,
+      (1 to input.readInt32()).map(i => deserializeDatabaseVersion(input)).toList,
       (1 to input.readInt32()).map(i => deserializePasswordEntry(input)).toList
+    )
+  }
+
+  def deserializeDatabaseVersion(input: InputStream): DatabaseVersion = {
+    DatabaseVersion(
+      input.readUUID(),
+      input.readDate(),
+      (1 to input.readInt32()).map(i => input.readUUID()).toList,
+      (1 to input.readInt32()).map(i => input.readUUID()).toList
     )
   }
 
   def deserializePasswordEntry(input: InputStream): PasswordEntry = {
     PasswordEntry(
-      input.readString(),
+      input.readUUID(),
       input.readDate(),
+      input.readString(),
       input.readString(),
       input.readSecureString(),
       input.readString(),
@@ -115,6 +184,7 @@ object Database {
 
   def deserializeCustomEntry(input: InputStream): CustomEntry = {
     CustomEntry(
+      input.readUUID(),
       input.readString(),
       input.readString()
     )

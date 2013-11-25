@@ -28,25 +28,25 @@ class Main(val directory: File) {
   
   def list(passphrase: SecureString): List[PasswordEntry] = {
     val db = Database.deserialize(passphrase, path(head))
-    db.passwords
+    db.currentPasswords
   }
 
-  def add(passphrase: SecureString, id: String, name: String, password: Either[SecureString, (PasswordCharacters, Int)]): PasswordEntry = {
+  def add(passphrase: SecureString, key: String, name: String, password: Either[SecureString, (PasswordCharacters, Int)]): PasswordEntry = {
     val db1 = Database.deserialize(passphrase, path(head))
     val pwd = password match {
       case Left(pwd) => pwd
       case Right((chars, len)) => PasswordUtils.generate(len, chars)
     }
-    val entry = PasswordEntry(id, new Date(), name, pwd)
+    val entry = PasswordEntry(UUID.randomUUID(), new Date(), key, name, pwd)
     val db2 = Database.addPassword(db1, entry)
     Database.serialize(passphrase, path(db2.id), db2)
     head = db2.id
     entry
   }
 
-  def remove(passphrase: SecureString, id: String) {
+  def remove(passphrase: SecureString, key: String) {
     val db1 = Database.deserialize(passphrase, path(head))
-    val db2 = Database.removePasswordById(db1, id)
+    val db2 = Database.removePasswordByKey(db1, key)
     Database.serialize(passphrase, path(db2.id), db2)
     head = db2.id
   }
@@ -68,7 +68,7 @@ object Main {
           passphrase(main.init(_))
         case Some(cli.list) =>
           for (pwd <- passphrase(main.list(_))) {
-            println(s"[${pwd.id}] ${pwd.name}")
+            println(s"[${pwd.key}] ${pwd.name} (${PasswordUtils.getBitEntropy(pwd.password)} bits) ${pwd.timeStamp}")
           }
         case Some(cli.show) =>
           passphrase(main.show(_, cli.show.id())) match {
