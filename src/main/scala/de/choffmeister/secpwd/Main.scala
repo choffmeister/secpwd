@@ -84,7 +84,7 @@ object Main {
           passphrase(main.init(_))
           printSuccess("Created new password store")
         case Some(cli.list) =>
-          for (pwd <- passphrase(main.list(_))) {
+          for (pwd <- passphrase(main.list(_)).sortWith(_.key < _.key)) {
             printInfo(pwd.key, s"${pwd.name} (${PasswordUtils.getBitEntropy(pwd.password)} bits) ${pwd.timeStamp}")
           }
         case Some(cli.show) =>
