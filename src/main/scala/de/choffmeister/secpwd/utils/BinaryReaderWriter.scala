@@ -47,11 +47,6 @@ class BinaryWriter(val stream: OutputStream) {
     value.readBytes(writeBinary(_))
   }
 
-  def writeBinary(value: Seq[Byte]): Unit = {
-    writeInt64(value.length)
-    writeToStream(stream, value.toArray, 0, value.length)
-  }
-
   def writeBinary(value: Array[Byte]): Unit = {
     writeInt64(value.length)
     writeToStream(stream, value, 0, value.length)

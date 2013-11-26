@@ -4,7 +4,7 @@ import org.specs2.mutable._
 import org.specs2.runner.JUnitRunner
 import org.junit.runner.RunWith
 import java.util.{UUID, Date}
-import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream, EOFException}
 import de.choffmeister.securestring.SecureString
 
 @RunWith(classOf[JUnitRunner])
@@ -42,6 +42,14 @@ class BinaryReaderWriterSpec extends Specification {
       buf(14) === 1.toByte
     }
 
+    "fail on unexpected EOF" in {
+      val streamRead = new ByteArrayInputStream(Array[Byte](0,0,0,64,1))
+      val reader = new BinaryReader(streamRead)
+
+      reader.readInt32() == 64
+      reader.readInt32() must throwA[EOFException]
+    }
+
     "read and write Int8" in {
       val streamWrite = new ByteArrayOutputStream()
       val writer = new BinaryWriter(streamWrite)
@@ -60,6 +68,8 @@ class BinaryReaderWriterSpec extends Specification {
       reader.readInt8() === Byte.MinValue
       reader.readInt8() === 1.toByte
       reader.readInt8() === Byte.MaxValue
+      reader.close()
+      ok
     }
 
     "read and write Int16" in {
@@ -80,6 +90,8 @@ class BinaryReaderWriterSpec extends Specification {
       reader.readInt16() === Short.MinValue
       reader.readInt16() === 16385.toShort
       reader.readInt16() === Short.MaxValue
+      reader.close()
+      ok
     }
 
     "read and write Int32" in {
@@ -100,6 +112,8 @@ class BinaryReaderWriterSpec extends Specification {
       reader.readInt32() === Int.MinValue
       reader.readInt32() === 134480385
       reader.readInt32() === Int.MaxValue
+      reader.close()
+      ok
     }
 
     "read and write Int64" in {
@@ -120,6 +134,8 @@ class BinaryReaderWriterSpec extends Specification {
       reader.readInt64() === Long.MinValue
       reader.readInt64() === 9169364094552375809L
       reader.readInt64() === Long.MaxValue
+      reader.close()
+      ok
     }
 
     "read and write Boolean" in {
@@ -138,6 +154,8 @@ class BinaryReaderWriterSpec extends Specification {
 
       reader.readBoolean() === true
       reader.readBoolean() === false
+      reader.close()
+      ok
     }
 
     "read and write String" in {
@@ -158,6 +176,8 @@ class BinaryReaderWriterSpec extends Specification {
       reader.readString() === "foo"
       reader.readString() === ""
       reader.readString() === "äöü"
+      reader.close()
+      ok
     }
 
     "read and write SecureString" in {
@@ -178,6 +198,8 @@ class BinaryReaderWriterSpec extends Specification {
       reader.readSecureString().read(_.mkString === "foo")
       reader.readSecureString().read(_.mkString === "")
       reader.readSecureString().read(_.mkString === "äöü")
+      reader.close()
+      ok
     }
 
     "read and write Binary" in {
@@ -198,6 +220,8 @@ class BinaryReaderWriterSpec extends Specification {
       reader.readBinary() === Array(Byte.MinValue, Byte.MaxValue)
       reader.readBinary() === Array.empty[Byte]
       reader.readBinary() === Array(10.toByte, 11.toByte, 12.toByte)
+      reader.close()
+      ok
     }
 
     "read and write UUID" in {
@@ -222,6 +246,8 @@ class BinaryReaderWriterSpec extends Specification {
       reader.readUUID() === uuid1
       reader.readUUID() === uuid2
       reader.readUUID() === uuid3
+      reader.close()
+      ok
     }
 
     "read and write Date" in {
@@ -246,6 +272,8 @@ class BinaryReaderWriterSpec extends Specification {
       reader.readDate() === date1
       reader.readDate() === date2
       reader.readDate() === date3
+      reader.close()
+      ok
     }
   }
 }

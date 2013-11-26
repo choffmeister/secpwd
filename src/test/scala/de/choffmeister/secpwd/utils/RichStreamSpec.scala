@@ -27,7 +27,7 @@ class RichStreamSpec extends Specification {
       ms.read() === 4.toByte
     }
 
-    "ensure puter stream position" in {
+    "ensure proper stream position" in {
       val buf = Array[Byte](0, 1, 2, 3, 4)
       val ms = new ByteArrayInputStream(buf)
       ms.read() === 0.toByte
@@ -52,6 +52,11 @@ class RichStreamSpec extends Specification {
 
       ok
     }
+
+    "ensure non negative length" in {
+      val ms = new ByteArrayInputStream(Array.empty)
+      ms.preSizedInner(-1L)(_.read()) must throwA[IndexOutOfBoundsException]
+    }
   }
 
   "RichOutputStream" should {
@@ -72,7 +77,7 @@ class RichStreamSpec extends Specification {
       ms.toByteArray.toList === List[Byte](0, 1, 2, 3, 4, 6)
     }
 
-    "ensure puter stream position" in {
+    "ensure proper stream position" in {
       val ms = new ByteArrayOutputStream()
       ms.write(0)
       ms.write(1)
@@ -102,6 +107,11 @@ class RichStreamSpec extends Specification {
       ms.write(14)
 
       ms.toByteArray.toList === List[Byte](0, 1, 4, 10, 11, 12, 13, 14)
+    }
+
+    "ensure non negative length" in {
+      val ms = new ByteArrayOutputStream()
+      ms.preSizedInner(-1L)(_.write(0)) must throwA[IndexOutOfBoundsException]
     }
   }
 }
