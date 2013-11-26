@@ -115,7 +115,10 @@ object Main {
           val pwdInteractive = InteractiveConsole.readSecureString("Password")
           val pwd = pwdInteractive match {
             case Some(pwd) =>
-              Left(pwd)
+              InteractiveConsole.readSecureString("Repeat") match {
+                case Some(pwdRepeat) if pwd == pwdRepeat => Left(pwd)
+                case _ => throw new Exception("Password repetition does not match")
+              }
             case _ =>
               val length = InteractiveConsole.readWithDefault[Int]("Password length", 32, _.toInt)
               val alphaLower = InteractiveConsole.readWithDefault[Boolean]("Use lower alpha characters?", true, _.toBoolean)
