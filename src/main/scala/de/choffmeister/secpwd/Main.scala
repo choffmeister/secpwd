@@ -91,10 +91,11 @@ object Main {
           passphrase(main.show(_, cli.show.idOrKey())) match {
             case Some(pwd) =>
               printInfo(pwd.key, "Password information")
-              println(s"  Name: ${pwd.name}")
               println(s"  Timestamp: ${pwd.timeStamp}")
-              if (pwd.userName.length > 0)
-                println(s"  Username: ${pwd.userName}")
+              println(s"  Name: ${pwd.name}")
+              if (pwd.description.length > 0) println(s"  Description: ${pwd.description}")
+              if (pwd.userName.length > 0) println(s"  Username: ${pwd.userName}")
+              if (pwd.url.length > 0) println(s"  URL: ${pwd.url}")
               println(s"  Strength: ${PasswordUtils.getBitEntropy(pwd.password)} bits")
               if (cli.show.printPassword()) {
                 print("  Password: ")
@@ -108,6 +109,9 @@ object Main {
           }
         case Some(cli.add) =>
           val name = InteractiveConsole.readWithDefault("Name", cli.add.key())
+          val description = InteractiveConsole.read("Description").orElse(Some("")).get
+          val url = InteractiveConsole.read("URL").orElse(Some("")).get
+          val userName = InteractiveConsole.read("Username").orElse(Some("")).get
           val pwdInteractive = InteractiveConsole.readSecureString("Password")
           val pwd = pwdInteractive match {
             case Some(pwd) =>
@@ -120,7 +124,7 @@ object Main {
               val special = InteractiveConsole.readWithDefault[Boolean]("Use special characters?", true, _.toBoolean)
               Right((PasswordCharacters(alphaLower, alphaUpper, numbers, special), length))
           }
-          passphrase(main.add(_, cli.add.key(), pwd, name, "", "", "", Map.empty))
+          passphrase(main.add(_, cli.add.key(), pwd, name, description, userName, url, Map.empty))
           printSuccess("Added password")
         case Some(cli.remove) =>
           passphrase(main.remove(_, cli.remove.idOrKey()))
