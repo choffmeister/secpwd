@@ -64,7 +64,7 @@ object SftpClient {
       } catch {
         case ex: JSchException if ex.getMessage == "Auth cancel" => throw new SshAuthenticationException(ex)
         case ex: JSchException if ex.getMessage == "USERAUTH fail" => throw new SshAuthenticationException(ex)
-        case _: Throwable => throw new Exception("ASD")
+        case ex: JSchException if ex.getMessage == "Auth fail" => throw new SshAuthenticationException(ex)
       }
 
       using(session.openChannel("sftp").asInstanceOf[ChannelSftp]) { sftp =>
