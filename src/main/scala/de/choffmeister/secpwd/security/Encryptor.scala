@@ -23,11 +23,11 @@ object Encryptor {
   }
 
   /**
-   * Encrypts a byte array with AES-128/CBC/PKCS5Padding algorithm. Uses PBKDF2 to derive key from passphrase.
+   * Encrypts a byte array with AES/CBC/PKCS5Padding algorithm. Uses PBKDF2 to derive key from passphrase.
    */
-  def encryptAes128(bytes: Array[Byte], passphrase: SecureString, deriveIterations: Int, salt: Array[Byte], iv: Array[Byte]): Array[Byte] = {
+  def encryptAes(bytes: Array[Byte], passphrase: SecureString, deriveIterations: Int, keySize: Int, salt: Array[Byte], iv: Array[Byte]): Array[Byte] = {
     val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
-    val keyRaw = deriveKey(passphrase, salt, deriveIterations, 128)
+    val keyRaw = deriveKey(passphrase, salt, deriveIterations, keySize)
     val key = new SecretKeySpec(keyRaw, "AES")
     cipher.init(Cipher.ENCRYPT_MODE, key, new IvParameterSpec(iv))
     val encrypted = cipher.doFinal(bytes)
@@ -37,11 +37,11 @@ object Encryptor {
   }
 
   /**
-   * Decrypts a byte array with AES-128/CBC/PKCS5Padding algorithm. Uses PBKDF2 to derive key from passphrase.
+   * Decrypts a byte array with AES/CBC/PKCS5Padding algorithm. Uses PBKDF2 to derive key from passphrase.
    */
-  def decryptAes128(bytes: Array[Byte], passphrase: SecureString, deriveIterations: Int, salt: Array[Byte], iv: Array[Byte]): Array[Byte] = {
+  def decryptAes(bytes: Array[Byte], passphrase: SecureString, deriveIterations: Int, keySize: Int, salt: Array[Byte], iv: Array[Byte]): Array[Byte] = {
     val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
-    val keyRaw = deriveKey(passphrase, salt, deriveIterations, 128)
+    val keyRaw = deriveKey(passphrase, salt, deriveIterations, keySize)
     val key = new SecretKeySpec(keyRaw, "AES")
     cipher.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(iv))
     val decrypted = cipher.doFinal(bytes)

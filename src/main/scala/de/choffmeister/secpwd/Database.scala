@@ -50,7 +50,7 @@ case class PasswordEntry(
   customFields: Map[String, String] = Map.empty
 )
 
-case class DatabaseCryptoInfo(deriveIterations: Int, macSalt: Array[Byte], encSalt: Array[Byte], iv: Array[Byte])
+case class DatabaseCryptoInfo(deriveIterations: Int, macSalt: Array[Byte], encKeySize: Int, encSalt: Array[Byte], iv: Array[Byte])
 
 class DatabaseSerializationException(message: String) extends Exception(message)
 
@@ -301,7 +301,8 @@ object Database {
   }
 
   def serialize(passphrase: SecureString, db: Database): Array[Byte] = {
-    val cryptinfo = DatabaseCryptoInfo(1024 * 16, generateRandomOctets(128), generateRandomOctets(128), generateRandomOctets(16))
+    val keySize = 128
+    val cryptinfo = DatabaseCryptoInfo(1024 * 16, generateRandomOctets(128), keySize, generateRandomOctets(128), generateRandomOctets(16))
     val bs = new ByteArrayOutputStream()
 
     bs.writeBytesRaw(MAGIC_BYTES)
@@ -310,12 +311,13 @@ object Database {
     writeBlock(bs) { ms =>
       ms.writeInt32(cryptinfo.deriveIterations)
       ms.writeBinary(cryptinfo.macSalt)
+      ms.writeInt32(cryptinfo.encKeySize)
       ms.writeBinary(cryptinfo.encSalt)
       ms.writeBinary(cryptinfo.iv)
     }
 
     writeBlock(bs) { ms =>
-      ms.writeBinary(encryptAes128(serializeDatabase(db), passphrase, cryptinfo.deriveIterations, cryptinfo.encSalt, cryptinfo.iv))
+      ms.writeBinary(encryptAes(serializeDatabase(db), passphrase, cryptinfo.deriveIterations, cryptinfo.encKeySize, cryptinfo.encSalt, cryptinfo.iv))
     }
 
     bs.writeBytesRaw(hmacSha512(bs.toByteArray, passphrase, cryptinfo.deriveIterations, cryptinfo.macSalt))
@@ -334,6 +336,7 @@ object Database {
       DatabaseCryptoInfo(
         ms.readInt32(),
         ms.readBinary(),
+        ms.readInt32(),
         ms.readBinary(),
         ms.readBinary()
       )
@@ -347,7 +350,7 @@ object Database {
       ms.readBinary()
     }
 
-    deserializeDatabase(decryptAes128(encrypted, passphrase, cryptoinfo.deriveIterations, cryptoinfo.encSalt, cryptoinfo.iv))
+    deserializeDatabase(decryptAes(encrypted, passphrase, cryptoinfo.deriveIterations, cryptoinfo.encKeySize, cryptoinfo.encSalt, cryptoinfo.iv))
   }
 
   def writeBlock(output: OutputStream)(inner: OutputStream => Any): Unit = {

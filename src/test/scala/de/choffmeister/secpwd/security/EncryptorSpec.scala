@@ -30,8 +30,8 @@ class EncryptorSpec extends Specification {
     val iv = generateRandomOctets(16)
 
     val plain = "Hello World! This is secpwd!"
-    val encrypted = encryptAes128(plain.getBytes, passphrase, deriveIterations, salt, iv)
-    val decrypted = new String(decryptAes128(encrypted, passphrase, deriveIterations, salt, iv))
+    val encrypted = encryptAes(plain.getBytes, passphrase, deriveIterations, 128, salt, iv)
+    val decrypted = new String(decryptAes(encrypted, passphrase, deriveIterations, 128, salt, iv))
     decrypted === plain
   }
 
@@ -42,8 +42,8 @@ class EncryptorSpec extends Specification {
       val iv = generateRandomOctets(16)
 
       val plain = "Hello World! This is secpwd!"
-      val encrypted = encryptAes128(plain.getBytes, SecureString("secure-password1".toCharArray), deriveIterations, salt, iv)
-      val decrypted = new String(decryptAes128(encrypted, SecureString("secure-password2".toCharArray), deriveIterations, salt, iv))
+      val encrypted = encryptAes(plain.getBytes, SecureString("secure-password1".toCharArray), deriveIterations, 128, salt, iv)
+      val decrypted = new String(decryptAes(encrypted, SecureString("secure-password2".toCharArray), deriveIterations, 128, salt, iv))
       decrypted !== plain
     } catch {
       case e: BadPaddingException => ok
