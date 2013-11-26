@@ -87,6 +87,22 @@ object Main {
           for (pwd <- passphrase(main.list(_)).sortWith(_.key < _.key)) {
             printInfo(pwd.key, s"${pwd.name} (${PasswordUtils.getBitEntropy(pwd.password)} bits) ${pwd.timeStamp}")
           }
+        case Some(cli.history) =>
+          val db = passphrase(main.current(_))
+          for (i <- 0 until db.versions.length - 1) {
+            val v1 = db.versions(i + 1)
+            val v2 = db.versions(i)
+            val diff = Database.diff(db, v1, v2)
+            
+            println(v2.timeStamp)
+            
+            for (a <- diff) a match {
+              case (key, (None, Some(b))) => printInfo(key, s"Add password (${b.id})")
+              case (key, (Some(a), None)) => printInfo(key, s"Remove password (${a.id})")
+              case (key, (Some(a), Some(b))) => printInfo(key, s"Update password (${a.id} -> ${b.id})")
+              case (_, (None, None)) => throw new Exception("Impossible case")
+            }
+          }
         case Some(cli.show) =>
           passphrase(main.show(_, cli.show.idOrKey())) match {
             case Some(pwd) =>
@@ -161,6 +177,7 @@ object Main {
 
     val init = new Subcommand("init")
     val list = new Subcommand("list")
+    val history = new Subcommand("history")
     val show = new Subcommand("show") {
       val idOrKey = trailArg[String]("id or key")
       val printPassword = opt[Boolean]("print-password", 'p')
@@ -168,7 +185,7 @@ object Main {
     val add = new Subcommand("add") {
       val key = trailArg[String]("key")
     }
-    val remove = new Subcommand("rm") {
+    val remove = new Subcommand("remove") {
       val idOrKey = trailArg[String]("id or key")
     }
   }
