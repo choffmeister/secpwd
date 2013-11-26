@@ -135,58 +135,49 @@ object Database {
     val keys = diff1.map(_._1).toList.union(diff2.map(_._1).toList).distinct
     val versions1 = gatherVersions(db1, v1).toList
     val versions2 = gatherVersions(db2, v2).toList
-
     val pwds1 = db1.passwords.filter(pwd => versions1.flatMap(_.passwordIds).contains(pwd.id))
     val pwds2 = db2.passwords.filter(pwd => versions2.flatMap(_.passwordIds).contains(pwd.id))
     val pwdsCommon = pwds1.intersect(pwds2)
     val pwds1Only = pwds1.diff(pwds2)
     val pwds2Only = pwds2.diff(pwds1)
-    var passwords = pwds1Only ::: pwds2Only ::: pwdsCommon
-    var passwordIds = lca.passwordIds
-
-    for (k <- keys) {
-      val c1 = diff1.find(_._1 == k)
-      val c2 = diff2.find(_._1 == k)
-
-      (c1, c2) match {
-        case (Some(c1), None) =>
-          c1 match {
-            case (_, (Some(a), None)) =>
-              passwordIds = passwordIds.filter(_ != a.id)
-            case (_, (None, Some(b))) =>
-              if (!passwords.contains(b)) passwords = b :: passwords
-              passwordIds = b.id :: passwordIds
-            case (_, (Some(a), Some(b))) =>
-              if (!passwords.contains(b)) passwords = b :: passwords
-              passwordIds = b.id :: passwordIds.filter(_ != a.id)
-          }
-        case (None, Some(c2)) =>
-          c2 match {
-            case (_, (Some(a), None)) =>
-              passwordIds = passwordIds.filter(_ != a.id)
-            case (_, (None, Some(b))) =>
-              if (!passwords.contains(b)) passwords = b :: passwords
-              passwordIds = b.id :: passwordIds
-            case (_, (Some(a), Some(b))) =>
-              if (!passwords.contains(b)) passwords = b :: passwords
-              passwordIds = b.id :: passwordIds.filter(_ != a.id)
-          }
-        case (Some(c1), Some(c2)) =>
-          throw new Exception("Merge conflict")
-        case (None, None) =>
-          throw new Exception("Impossible case")
-      }
+    
+    @scala.annotation.tailrec
+    def replay(keys: List[String], diff1: Map[String, (Option[PasswordEntry], Option[PasswordEntry])],
+        diff2: Map[String, (Option[PasswordEntry], Option[PasswordEntry])], passwordIds: List[UUID],
+        passwords: List[PasswordEntry]): (List[UUID], List[PasswordEntry]) = keys match {
+      case key :: rest =>
+        (diff1.get(key), diff2.get(key)) match {
+          case (Some(c1), None) =>
+            c1 match {
+              case (Some(a), None) => replay(rest, diff1, diff2, passwordIds.filter(_ != a.id), passwords)
+              case (None, Some(b)) => replay(rest, diff1, diff2, b.id :: passwordIds, passwords)
+              case (Some(a), Some(b)) => replay(rest, diff1, diff2, b.id :: passwordIds.filter(_ != a.id), passwords)
+              case (None, None) => throw new Exception("Impossible case")
+            }
+          case (None, Some(c2)) =>
+            c2 match {
+              case (Some(a), None) => replay(rest, diff1, diff2, passwordIds.filter(_ != a.id), passwords)
+              case (None, Some(b)) => replay(rest, diff1, diff2, b.id :: passwordIds, passwords)
+              case (Some(a), Some(b)) => replay(rest, diff1, diff2, b.id :: passwordIds.filter(_ != a.id), passwords)
+              case (None, None) => throw new Exception("Impossible case")
+            }
+          case (Some(c1), Some(c2)) =>
+            (c1, c2) match {
+              // TODO supply conflict resolution strategy
+              case _ => throw new Exception("Merge conflict")
+            }
+          case (None, None) => throw new Exception("Impossible case")
+        }
+      case _ => (passwordIds, passwords)
     }
 
     val id = UUID.randomUUID()
     val timeStamp = new Date()
+    val passwords = replay(keys, diff1, diff2, lca.passwordIds, pwds1Only ::: pwds2Only ::: pwdsCommon)
     val priorVersions = (versions1 ::: versions2).distinct.sortWith(_.depth > _.depth)
-    Database(
-      id,
-      timeStamp,
-      DatabaseVersion(id, timeStamp, Math.max(v1.depth, v2.depth) + 1, List(v1.versionId, v2.versionId), passwordIds) :: priorVersions,
-      passwords
-    )
+    val depth = Math.max(v1.depth, v2.depth) + 1
+    val version = DatabaseVersion(id, timeStamp, depth, List(v1.versionId, v2.versionId), passwords._1)
+    Database(id, timeStamp, version :: priorVersions, passwords._2)
   }
 
   private def gatherVersions(db: Database, v: DatabaseVersion): List[DatabaseVersion] =
