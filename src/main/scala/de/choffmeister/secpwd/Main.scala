@@ -16,13 +16,13 @@ class Main(val directory: File) {
 
   def init(passphrase: SecureString): Database = {
     val db = Database.create()
-    Database.serialize(passphrase, path(db.id), db)
+    path(db.id).bytes = Database.serialize(passphrase, db)
     head = db.id
     db
   }
 
   def show(passphrase: SecureString, idOrKey: String): Option[PasswordEntry] = {
-    val db = Database.deserialize(passphrase, path(head))
+    val db = Database.deserialize(passphrase, path(head).bytes)
     parseIdOrKey(idOrKey) match {
       case Left(id) => db.passwordById(id)
       case Right(key) => db.currentPasswordByKey(key)
@@ -30,30 +30,30 @@ class Main(val directory: File) {
   }
 
   def list(passphrase: SecureString): List[PasswordEntry] = {
-    val db = Database.deserialize(passphrase, path(head))
+    val db = Database.deserialize(passphrase, path(head).bytes)
     db.currentPasswords
   }
 
   def add(passphrase: SecureString, key: String, name: String, password: Either[SecureString, (PasswordCharacters, Int)]): PasswordEntry = {
-    val db1 = Database.deserialize(passphrase, path(head))
+    val db1 = Database.deserialize(passphrase, path(head).bytes)
     val pwd = password match {
       case Left(pwd) => pwd
       case Right((chars, len)) => PasswordUtils.generate(len, chars)
     }
     val entry = PasswordEntry(UUID.randomUUID(), new Date(), key, name, pwd)
     val db2 = Database.addPassword(db1, entry)
-    Database.serialize(passphrase, path(db2.id), db2)
+    path(db2.id).bytes = Database.serialize(passphrase, db2)
     head = db2.id
     entry
   }
 
   def remove(passphrase: SecureString, idOrKey: String) {
-    val db1 = Database.deserialize(passphrase, path(head))
+    val db1 = Database.deserialize(passphrase, path(head).bytes)
     val db2 = parseIdOrKey(idOrKey) match {
       case Left(id) => Database.removePasswordById(db1, id)
       case Right(key) => Database.removePasswordByKey(db1, key)
     }
-    Database.serialize(passphrase, path(db2.id), db2)
+    path(db2.id).bytes = Database.serialize(passphrase, db2)
     head = db2.id
   }
 

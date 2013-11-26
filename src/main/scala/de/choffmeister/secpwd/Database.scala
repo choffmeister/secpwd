@@ -325,7 +325,7 @@ object Database {
     )
   }
 
-  def serialize(passphrase: SecureString, path: File, db: Database): Unit = {
+  def serialize(passphrase: SecureString, db: Database): Array[Byte] = {
     val cryptinfo = DatabaseCryptoInfo(1024 * 16, generateRandomOctets(128), generateRandomOctets(128), generateRandomOctets(16))
     val bs = new ByteArrayOutputStream()
 
@@ -344,14 +344,11 @@ object Database {
     }
 
     bs.writeBytesRaw(hmacSha512(bs.toByteArray, passphrase, cryptinfo.deriveIterations, cryptinfo.macSalt))
-
-    val allBytes = bs.toByteArray
-    path.bytes = allBytes
+    bs.toByteArray
   }
 
-  def deserialize(passphrase: SecureString, path: File): Database = {
-    val allBytes = path.bytes
-    val bs = new ByteArrayInputStream(allBytes)
+  def deserialize(passphrase: SecureString, bytes: Array[Byte]): Database = {
+    val bs = new ByteArrayInputStream(bytes)
 
     val magicbytes = bs.readBytesRaw(4)
     if (!compareByteArrays(magicbytes, MAGIC_BYTES)) throw new DatabaseSerializationException("Invalid magic bytes")
@@ -367,8 +364,8 @@ object Database {
       )
     }
 
-    val signature = allBytes.drop(allBytes.length - 64)
-    val calcSignature = hmacSha512(allBytes.take(allBytes.length - 64), passphrase, cryptoinfo.deriveIterations, cryptoinfo.macSalt)
+    val signature = bytes.drop(bytes.length - 64)
+    val calcSignature = hmacSha512(bytes.take(bytes.length - 64), passphrase, cryptoinfo.deriveIterations, cryptoinfo.macSalt)
     if (!compareByteArrays(calcSignature, signature)) throw new DatabaseSerializationException("Invalid passphrase")
 
     val encrypted = readBlock(bs) { ms =>
