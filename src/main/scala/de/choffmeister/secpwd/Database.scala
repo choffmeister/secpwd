@@ -57,7 +57,7 @@ case class PasswordEntry(
   userName: String = "",
   description: String = "",
   customFields: List[CustomEntry] = Nil
-)
+) extends BaseEntry
 
 case class DatabaseCryptoInfo(deriveIterations: Int, macSalt: Array[Byte], encSalt: Array[Byte], iv: Array[Byte])
 
@@ -125,8 +125,38 @@ object Database {
   }
 
   def merge(db1: Database, v1: DatabaseVersion, db2: Database, v2: DatabaseVersion): Database = {
-    val lca = lowestCommonAncestor(db1, v1, db2, v2)
+    @scala.annotation.tailrec
+    def replay(keys: List[String], diff1: Map[String, (Option[PasswordEntry], Option[PasswordEntry])],
+        diff2: Map[String, (Option[PasswordEntry], Option[PasswordEntry])], passwordIds: List[UUID],
+        passwords: List[PasswordEntry]): (List[UUID], List[PasswordEntry]) =
+      keys match {
+        case key :: rest =>
+          (diff1.get(key), diff2.get(key)) match {
+            case (Some(c1), None) =>
+              c1 match {
+                case (Some(a), None) => replay(rest, diff1, diff2, passwordIds.filter(_ != a.id), passwords)
+                case (None, Some(b)) => replay(rest, diff1, diff2, b.id :: passwordIds, passwords)
+                case (Some(a), Some(b)) => replay(rest, diff1, diff2, b.id :: passwordIds.filter(_ != a.id), passwords)
+                case (None, None) => throw new Exception("Impossible case")
+              }
+            case (None, Some(c2)) =>
+              c2 match {
+                case (Some(a), None) => replay(rest, diff1, diff2, passwordIds.filter(_ != a.id), passwords)
+                case (None, Some(b)) => replay(rest, diff1, diff2, b.id :: passwordIds, passwords)
+                case (Some(a), Some(b)) => replay(rest, diff1, diff2, b.id :: passwordIds.filter(_ != a.id), passwords)
+                case (None, None) => throw new Exception("Impossible case")
+              }
+            case (Some(c1), Some(c2)) =>
+              (c1, c2) match {
+                // TODO supply conflict resolution strategy
+                case _ => throw new Exception("Merge conflict")
+              }
+            case (None, None) => throw new Exception("Impossible case")
+          }
+        case _ => (passwordIds, passwords)
+      }
 
+    val lca = lowestCommonAncestor(db1, v1, db2, v2)
     if (lca == v1) return Database.fromVersion(db2, v2)
     if (lca == v2) return Database.fromVersion(db1, v1)
 
@@ -137,39 +167,9 @@ object Database {
     val versions2 = gatherVersions(db2, v2).toList
     val pwds1 = db1.passwords.filter(pwd => versions1.flatMap(_.passwordIds).contains(pwd.id))
     val pwds2 = db2.passwords.filter(pwd => versions2.flatMap(_.passwordIds).contains(pwd.id))
-    val pwdsCommon = pwds1.intersect(pwds2)
-    val pwds1Only = pwds1.diff(pwds2)
-    val pwds2Only = pwds2.diff(pwds1)
-    
-    @scala.annotation.tailrec
-    def replay(keys: List[String], diff1: Map[String, (Option[PasswordEntry], Option[PasswordEntry])],
-        diff2: Map[String, (Option[PasswordEntry], Option[PasswordEntry])], passwordIds: List[UUID],
-        passwords: List[PasswordEntry]): (List[UUID], List[PasswordEntry]) = keys match {
-      case key :: rest =>
-        (diff1.get(key), diff2.get(key)) match {
-          case (Some(c1), None) =>
-            c1 match {
-              case (Some(a), None) => replay(rest, diff1, diff2, passwordIds.filter(_ != a.id), passwords)
-              case (None, Some(b)) => replay(rest, diff1, diff2, b.id :: passwordIds, passwords)
-              case (Some(a), Some(b)) => replay(rest, diff1, diff2, b.id :: passwordIds.filter(_ != a.id), passwords)
-              case (None, None) => throw new Exception("Impossible case")
-            }
-          case (None, Some(c2)) =>
-            c2 match {
-              case (Some(a), None) => replay(rest, diff1, diff2, passwordIds.filter(_ != a.id), passwords)
-              case (None, Some(b)) => replay(rest, diff1, diff2, b.id :: passwordIds, passwords)
-              case (Some(a), Some(b)) => replay(rest, diff1, diff2, b.id :: passwordIds.filter(_ != a.id), passwords)
-              case (None, None) => throw new Exception("Impossible case")
-            }
-          case (Some(c1), Some(c2)) =>
-            (c1, c2) match {
-              // TODO supply conflict resolution strategy
-              case _ => throw new Exception("Merge conflict")
-            }
-          case (None, None) => throw new Exception("Impossible case")
-        }
-      case _ => (passwordIds, passwords)
-    }
+    val pwdsCommon = intersect(pwds1, pwds2)
+    val pwds1Only = diff(pwds1, pwds2)
+    val pwds2Only = diff(pwds2, pwds1)
 
     val id = UUID.randomUUID()
     val timeStamp = new Date()
@@ -181,7 +181,7 @@ object Database {
   }
 
   private def gatherVersions(db: Database, v: DatabaseVersion): List[DatabaseVersion] =
-    v :: v.parentVersionIds.map(pid => db.versions.find(_.versionId == pid).get).flatMap(gatherVersions(db, _)).sortWith(_.depth >= _.depth)
+    v :: v.parentVersionIds.map(pid => db.versions.find(_.versionId == pid).get).flatMap(gatherVersions(db, _)).sortWith(_.depth > _.depth).distinct
 
   def lowestCommonAncestor(db1: Database, v1: DatabaseVersion, db2: Database, v2: DatabaseVersion): DatabaseVersion = {
     @scala.annotation.tailrec
@@ -208,13 +208,6 @@ object Database {
               nl2 = sortedInsert[DatabaseVersion](nl2, p, (a, b) => a.depth >= b.depth)
           }
           recursion(nl1, nl2)
-      }
-
-    def sortedInsert[T](l: List[T], it: T, order: (T, T) => Boolean): List[T] = l match {
-      case Nil => List(it)
-      case first :: rest =>
-        if (order(it, first)) it :: l
-        else first :: sortedInsert(rest, it, order)
       }
 
     recursion(List(v1), List(v2))
@@ -389,14 +382,35 @@ object Database {
     return result.get
   }
 
-  def compareByteArrays(arr1: Array[Byte], arr2: Array[Byte]): Boolean = {
+  private def compareByteArrays(arr1: Array[Byte], arr2: Array[Byte]): Boolean = {
     compareByteArrayChunks(arr1, 0, arr2, 0, Math.max(arr1.length, arr2.length))
   }
 
-  def compareByteArrayChunks(arr1: Array[Byte], off1: Int, arr2: Array[Byte], off2: Int, len: Int): Boolean = {
+  private def compareByteArrayChunks(arr1: Array[Byte], off1: Int, arr2: Array[Byte], off2: Int, len: Int): Boolean = {
     if (len == 0) true
     else if (arr1.length <= off1 || arr2.length <= off2) false
     else if (arr1(off1) != arr2(off2)) false
     else compareByteArrayChunks(arr1, off1 + 1, arr2, off2 + 1, len - 1)
+  }
+
+  private def intersect[T](l1: List[T], l2: List[T]): List[T] = l1 match {
+    case first :: rest =>
+      if (l2.contains(first)) first :: intersect(rest, l2)
+      else intersect(rest, l2)
+    case _ => Nil
+  }
+
+  private def diff[T](l1: List[T], l2: List[T]): List[T] = l1 match {
+    case first :: rest =>
+      if (!l2.contains(first)) first :: diff(rest, l2)
+      else diff(rest, l2)
+    case _ => Nil
+  }
+
+  private def sortedInsert[T](l: List[T], it: T, order: (T, T) => Boolean): List[T] = l match {
+    case Nil => List(it)
+    case first :: rest =>
+      if (order(it, first)) it :: l
+      else first :: sortedInsert(rest, it, order)
   }
 }

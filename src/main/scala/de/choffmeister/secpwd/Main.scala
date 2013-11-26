@@ -57,6 +57,8 @@ class Main(val directory: File) {
     head = db2.id
   }
 
+  def current(passphrase: SecureString): Database = Database.deserialize(passphrase, path(head).bytes)
+
   def head: UUID = UUID.fromString(new File(directory, "HEAD").text.trim)
   def head_=(id: UUID): Unit = new File(directory, "HEAD").text = id.toString
   def path(id: UUID): File = new File(directory, id.toString)

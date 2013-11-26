@@ -18,7 +18,21 @@ class SftpSession(channel: ChannelSftp) {
     channel.cd(sourceDir)
     pipe(channel.get(sourceName), output)
   }
-  
+
+  def mkdir(dir: String) {
+    channel.mkdir(dir)
+  }
+
+  def exists(dir: String, name: String): Boolean = {
+    try {
+      channel.cd(dir)
+      channel.lstat(name)
+      true
+    } catch {
+      case e: Throwable => false
+    }
+  }
+
   private def pipe(source: InputStream, target: OutputStream) {
     val buffer = new Array[Byte](1024)
     val bis = new BufferedInputStream(source)
