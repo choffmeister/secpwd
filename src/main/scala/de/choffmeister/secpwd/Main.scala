@@ -100,13 +100,14 @@ object Main {
                 print("  Password: ")
                 pwd.password.read(_.foreach(print(_)))
                 println()
+              } else {
+                println("  Password: ***")
               }
             case _ =>
               printError(s"Password ${cli.show.idOrKey()} does not exist")
           }
         case Some(cli.add) =>
-          val name = InteractiveConsole.read("Name").get
-          val id = InteractiveConsole.readWithDefault("Key", name.toLowerCase)
+          val name = InteractiveConsole.readWithDefault("Name", cli.add.key())
           val pwdInteractive = InteractiveConsole.readSecureString("Password")
           val pwd = pwdInteractive match {
             case Some(pwd) =>
@@ -119,7 +120,7 @@ object Main {
               val special = InteractiveConsole.readWithDefault[Boolean]("Use special characters?", true, _.toBoolean)
               Right((PasswordCharacters(alphaLower, alphaUpper, numbers, special), length))
           }
-          passphrase(main.add(_, id, name, pwd))
+          passphrase(main.add(_, cli.add.key(), name, pwd))
           printSuccess("Added password")
         case Some(cli.remove) =>
           passphrase(main.remove(_, cli.remove.idOrKey()))
@@ -157,7 +158,9 @@ object Main {
       val idOrKey = trailArg[String]("id or key")
       val printPassword = opt[Boolean]("print-password", 'p')
     }
-    val add = new Subcommand("add")
+    val add = new Subcommand("add") {
+      val key = trailArg[String]("key")
+    }
     val remove = new Subcommand("rm") {
       val idOrKey = trailArg[String]("id or key")
     }
