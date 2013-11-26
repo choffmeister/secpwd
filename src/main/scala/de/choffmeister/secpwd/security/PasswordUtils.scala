@@ -9,7 +9,7 @@ object PasswordCharacters {
   val alphaLowerChars = Seq[Char]('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z')
   val alphaUpperChars = Seq[Char]('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z')
   val numbersChars = Seq[Char]('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')
-  val specialChars = Seq[Char]('!', '$', '%', '&', '/', '#', '=', '?', '-', '_', '.', ':', ';', ',', '*', '(', ')', '[', ']', '{', '}')
+  val specialChars = Seq[Char]('!', '$', '%', '&', '/', '#', '=', '?', '-', '_', '.', ':', ';', ',', '*', '(', ')', '[', ']', '{', '}', '@')
 
   def chars(characters: PasswordCharacters): Seq[Char] = {
     var result = Seq.empty[Char]
@@ -41,10 +41,7 @@ object PasswordUtils {
     val chars = PasswordCharacters.chars(characters)
     val plain = new Array[Char](length)
     for (i <- 0 until length) plain(i) = chars(generateRandomInt(chars.length))
-    val pwd = SecureString(plain)
-
-    if (PasswordCharacters.categorize(pwd) == characters) pwd
-    else generate(length, characters)
+    SecureString(plain)
   }
 
   def getBitEntropy(password: SecureString): Int = {

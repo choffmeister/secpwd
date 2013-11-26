@@ -22,4 +22,21 @@ class RandomGeneratorSpec extends Specification {
     rnd2 !== rnd4
     rnd3 !== rnd4
   }
+
+  "generate random integers" in {
+    val rnd1 = (1 to 10).map(i => generateRandomInt(25)).toList
+    val rnd2 = (1 to 10).map(i => generateRandomInt(25)).toList
+    val rnd3 = generateRandomInts(25, 10)
+
+    rnd1.forall(_ >= 0) === true
+    rnd1.forall(_ < 25) === true
+    rnd2.forall(_ >= 0) === true
+    rnd2.forall(_ < 25) === true
+    rnd3.forall(_ >= 0) === true
+    rnd3.forall(_ < 25) === true
+
+    rnd1 !== rnd2
+    rnd1 !== rnd3
+    rnd2 !== rnd3
+  }
 }
