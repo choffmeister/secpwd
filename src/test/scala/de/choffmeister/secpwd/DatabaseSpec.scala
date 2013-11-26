@@ -18,9 +18,9 @@ class DatabaseSpec extends Specification {
 
   "add passwords" in {
     val db1 = Database.create()
-    val pwd1 = PasswordEntry(UUID.randomUUID(), new Date(0), "service1", "Service #1", SecureString("password1".toCharArray))
+    val pwd1 = DatabaseSpec.createPasswordEntry(0)
     val db2 = Database.addPassword(db1, pwd1)
-    val pwd2 = PasswordEntry(UUID.randomUUID(), new Date(1), "service2", "Service #2", SecureString("password2".toCharArray))
+    val pwd2 = DatabaseSpec.createPasswordEntry(1)
     val db3 = Database.addPassword(db2, pwd2)
 
     val v1 = DatabaseVersion(db1.id, db1.timeStamp, 0, Nil, Nil)
@@ -37,9 +37,9 @@ class DatabaseSpec extends Specification {
 
   "remove passwords" in {
     val db1 = Database.create()
-    val pwd1 = PasswordEntry(UUID.randomUUID(), new Date(0), "service1", "Service #1", SecureString("password1".toCharArray))
+    val pwd1 = DatabaseSpec.createPasswordEntry(0)
     val db2 = Database.addPassword(db1, pwd1)
-    val pwd2 = PasswordEntry(UUID.randomUUID(), new Date(1), "service2", "Service #2", SecureString("password2".toCharArray))
+    val pwd2 = DatabaseSpec.createPasswordEntry(1)
     val db3 = Database.addPassword(db2, pwd2)
     val db4 = Database.removePasswordByKey(db3, pwd1.key)
     val db5 = Database.removePasswordByKey(db4, pwd2.key)
@@ -60,9 +60,9 @@ class DatabaseSpec extends Specification {
 
   "update passwords" in {
     val db1 = Database.create()
-    val pwd1 = PasswordEntry(UUID.randomUUID(), new Date(0), "service1", "Service #1", SecureString("password1".toCharArray))
+    val pwd1 = DatabaseSpec.createPasswordEntry(0)
     val db2 = Database.addPassword(db1, pwd1)
-    val pwd2 = PasswordEntry(UUID.randomUUID(), new Date(1), "service2", "Service #2", SecureString("password2".toCharArray))
+    val pwd2 = DatabaseSpec.createPasswordEntry(1)
     val db3 = Database.addPassword(db2, pwd2)
     val pwd3 = pwd1.copy(id = UUID.randomUUID(), timeStamp = new Date(2), password = SecureString("password1-new".toCharArray))
     val db4 = Database.updatePassword(db3, pwd3)
@@ -89,11 +89,29 @@ class DatabaseSpec extends Specification {
     db5.passwords.map(_.id).distinct must haveSize(4)
   }
 
-  "deseralize and serialize databases" in {
+  "deserialize and serialize password entries" in {
+    val pwd1 = DatabaseSpec.createPasswordEntry(0).copy(customFields = Map("field1" -> "value1", "field2" -> "value2"))
+    val ba1 = new ByteArrayOutputStream()
+    Database.serializePasswordEnty(ba1, pwd1)
+    val ba2 = new ByteArrayInputStream(ba1.toByteArray)
+    val pwd2 = Database.deserializePasswordEntry(ba2)
+
+    pwd2.id === pwd1.id
+    pwd2.timeStamp === new Date(0)
+    pwd2.key === "pwd-0"
+    pwd2.password === SecureString("pass-0".toCharArray())
+    pwd2.name === "Password 0"
+    pwd2.description === "Description 0"
+    pwd2.userName === "user-0"
+    pwd2.url === "http://service0.com/"
+    pwd2.customFields === Map("field1" -> "value1", "field2" -> "value2")
+  }
+
+  "deserialize and serialize databases" in {
     val db1 = Database.create()
-    val pwd1 = PasswordEntry(UUID.randomUUID(), new Date(0), "service1", "Service #1", SecureString("password1".toCharArray))
+    val pwd1 = DatabaseSpec.createPasswordEntry(0)
     val db2 = Database.addPassword(db1, pwd1)
-    val pwd2 = PasswordEntry(UUID.randomUUID(), new Date(1), "service2", "Service #2", SecureString("password2".toCharArray))
+    val pwd2 = DatabaseSpec.createPasswordEntry(1)
     val db3 = Database.addPassword(db2, pwd2)
 
     val output = new ByteArrayOutputStream()
@@ -106,49 +124,49 @@ class DatabaseSpec extends Specification {
 
   "diff" in {
     val db1 = Database.create()
-    val pwd1 = PasswordEntry(UUID.randomUUID(), new Date(0), "service1", "Service #1", SecureString("password1".toCharArray))
+    val pwd1 = DatabaseSpec.createPasswordEntry(0)
     val db2 = Database.addPassword(db1, pwd1)
-    val pwd2 = PasswordEntry(UUID.randomUUID(), new Date(1), "service2", "Service #2", SecureString("password2".toCharArray))
+    val pwd2 = DatabaseSpec.createPasswordEntry(1)
     val db3 = Database.addPassword(db2, pwd2)
-    val pwd3 = PasswordEntry(UUID.randomUUID(), new Date(2), "service3", "Service #3", SecureString("password3".toCharArray))
+    val pwd3 = DatabaseSpec.createPasswordEntry(2)
     val db4 = Database.addPassword(db3, pwd3)
     val pwd4 = pwd1.copy(id = UUID.randomUUID(), timeStamp = new Date(3), password = SecureString("password1-new".toCharArray))
     val db5 = Database.updatePassword(db4, pwd4)
-    val db6 = Database.removePasswordByKey(db5, "service2")
+    val db6 = Database.removePasswordByKey(db5, "pwd-1")
     
     val db = db6
     val v = (0 until 6).map(i => db.versions(5 - i))
 
-    Database.diff(db, v(0), v(1)) === Map("service1" -> (None, Some(pwd1)))
-    Database.diff(db, v(1), v(2)) === Map("service2" -> (None, Some(pwd2)))
-    Database.diff(db, v(2), v(3)) === Map("service3" -> (None, Some(pwd3)))
-    Database.diff(db, v(3), v(4)) === Map("service1" -> (Some(pwd1), Some(pwd4)))
-    Database.diff(db, v(4), v(5)) === Map("service2" -> (Some(pwd2), None))
+    Database.diff(db, v(0), v(1)) === Map("pwd-0" -> (None, Some(pwd1)))
+    Database.diff(db, v(1), v(2)) === Map("pwd-1" -> (None, Some(pwd2)))
+    Database.diff(db, v(2), v(3)) === Map("pwd-2" -> (None, Some(pwd3)))
+    Database.diff(db, v(3), v(4)) === Map("pwd-0" -> (Some(pwd1), Some(pwd4)))
+    Database.diff(db, v(4), v(5)) === Map("pwd-1" -> (Some(pwd2), None))
 
-    Database.diff(db, v(0), v(3)) === Map("service3" -> (None, Some(pwd3)), "service2" -> (None, Some(pwd2)), "service1" -> (None, Some(pwd1)))
-    Database.diff(db, v(0), v(5)) === Map("service1" -> (None, Some(pwd4)), "service3" -> (None, Some(pwd3)))
-    Database.diff(db, v(3), v(5)) === Map("service2" -> (Some(pwd2), None), "service1" -> (Some(pwd1), Some(pwd4)))
+    Database.diff(db, v(0), v(3)) === Map("pwd-2" -> (None, Some(pwd3)), "pwd-1" -> (None, Some(pwd2)), "pwd-0" -> (None, Some(pwd1)))
+    Database.diff(db, v(0), v(5)) === Map("pwd-0" -> (None, Some(pwd4)), "pwd-2" -> (None, Some(pwd3)))
+    Database.diff(db, v(3), v(5)) === Map("pwd-1" -> (Some(pwd2), None), "pwd-0" -> (Some(pwd1), Some(pwd4)))
   }
 
   "find lowest common ancestor" in {
     val db1 = Database.create()
-    val pwd1 = PasswordEntry(UUID.randomUUID(), new Date(0), "service1", "Service #1", SecureString("password1".toCharArray))
+    val pwd1 = DatabaseSpec.createPasswordEntry(0)
     val db2 = Database.addPassword(db1, pwd1)
-    val pwd2 = PasswordEntry(UUID.randomUUID(), new Date(1), "service2", "Service #2", SecureString("password2".toCharArray))
+    val pwd2 = DatabaseSpec.createPasswordEntry(1)
     val db3 = Database.addPassword(db2, pwd2)
 
-    val pwd3a = PasswordEntry(UUID.randomUUID(), new Date(2), "service3a", "Service #3a", SecureString("password3a".toCharArray))
+    val pwd3a = DatabaseSpec.createPasswordEntry(2)
     val db4a = Database.addPassword(db3, pwd3a)
-    val pwd4a = PasswordEntry(UUID.randomUUID(), new Date(2), "service4a", "Service #4a", SecureString("password4a".toCharArray))
+    val pwd4a = DatabaseSpec.createPasswordEntry(3)
     val db5a = Database.addPassword(db4a, pwd4a)
-    val pwd5a = PasswordEntry(UUID.randomUUID(), new Date(2), "service5a", "Service #5a", SecureString("password5a".toCharArray))
+    val pwd5a = DatabaseSpec.createPasswordEntry(4)
     val db6a = Database.addPassword(db5a, pwd5a)
 
-    val pwd3b = PasswordEntry(UUID.randomUUID(), new Date(2), "service3b", "Service #3b", SecureString("password3b".toCharArray))
+    val pwd3b = DatabaseSpec.createPasswordEntry(5)
     val db4b = Database.addPassword(db3, pwd3b)
-    val pwd4b = PasswordEntry(UUID.randomUUID(), new Date(2), "service4b", "Service #4b", SecureString("password4b".toCharArray))
+    val pwd4b = DatabaseSpec.createPasswordEntry(6)
     val db5b = Database.addPassword(db4b, pwd4b)
-    val pwd5b = PasswordEntry(UUID.randomUUID(), new Date(2), "service5b", "Service #5b", SecureString("password5b".toCharArray))
+    val pwd5b = DatabaseSpec.createPasswordEntry(7)
     val db6b = Database.addPassword(db5b, pwd5b)
 
     Database.lowestCommonAncestor(db3, db3.versions(0), db3, db3.versions(0)) === db3.versions(0)
@@ -162,22 +180,22 @@ class DatabaseSpec extends Specification {
   
   "merge" in {
     val db1 = Database.create()
-    val pwd1 = PasswordEntry(UUID.randomUUID(), new Date(0), "service1", "Service #1", SecureString("password1".toCharArray))
+    val pwd1 = DatabaseSpec.createPasswordEntry(0)
     val db2 = Database.addPassword(db1, pwd1)
-    val pwd2 = PasswordEntry(UUID.randomUUID(), new Date(1), "service2", "Service #2", SecureString("password2".toCharArray))
+    val pwd2 = DatabaseSpec.createPasswordEntry(1)
     val db3 = Database.addPassword(db2, pwd2)
 
-    val pwd3a = PasswordEntry(UUID.randomUUID(), new Date(2), "service3a", "Service #3a", SecureString("password3a".toCharArray))
+    val pwd3a = DatabaseSpec.createPasswordEntry(2)
     val db4a = Database.addPassword(db3, pwd3a)
-    val pwd4a = PasswordEntry(UUID.randomUUID(), new Date(2), "service4a", "Service #4a", SecureString("password4a".toCharArray))
+    val pwd4a = DatabaseSpec.createPasswordEntry(3)
     val db5a = Database.addPassword(db4a, pwd4a)
-    val db6a = Database.removePasswordByKey(db5a, "service3a")
+    val db6a = Database.removePasswordByKey(db5a, "pwd-2")
 
-    val pwd3b = PasswordEntry(UUID.randomUUID(), new Date(2), "service3b", "Service #3b", SecureString("password3b".toCharArray))
+    val pwd3b = DatabaseSpec.createPasswordEntry(4)
     val db4b = Database.addPassword(db3, pwd3b)
-    val pwd4b = PasswordEntry(UUID.randomUUID(), new Date(2), "service4b", "Service #4b", SecureString("password4b".toCharArray))
+    val pwd4b = DatabaseSpec.createPasswordEntry(5)
     val db5b = Database.addPassword(db4b, pwd4b)
-    val db6b = Database.removePasswordByKey(db5b, "service3b")
+    val db6b = Database.removePasswordByKey(db5b, "pwd-4")
 
     Database.merge(db3, db3.versions(0), db3, db3.versions(0)) === db3
     Database.merge(db1, db1.versions(0), db3, db3.versions(0)) === db3
@@ -215,21 +233,21 @@ class DatabaseSpec extends Specification {
 
   "from version" in {
     val db1 = Database.create()
-    val pwd1 = PasswordEntry(UUID.randomUUID(), new Date(0), "service1", "Service #1", SecureString("password1".toCharArray))
+    val pwd1 = DatabaseSpec.createPasswordEntry(0)
     val db2 = Database.addPassword(db1, pwd1)
-    val pwd2 = PasswordEntry(UUID.randomUUID(), new Date(1), "service2", "Service #2", SecureString("password2".toCharArray))
+    val pwd2 = DatabaseSpec.createPasswordEntry(1)
     val db3 = Database.addPassword(db2, pwd2)
-    val pwd3a = PasswordEntry(UUID.randomUUID(), new Date(2), "service3a", "Service #3a", SecureString("password3a".toCharArray))
+    val pwd3a = DatabaseSpec.createPasswordEntry(2)
     val db4a = Database.addPassword(db3, pwd3a)
-    val pwd4a = PasswordEntry(UUID.randomUUID(), new Date(2), "service4a", "Service #4a", SecureString("password4a".toCharArray))
+    val pwd4a = DatabaseSpec.createPasswordEntry(3)
     val db5a = Database.addPassword(db4a, pwd4a)
-    val pwd5a = PasswordEntry(UUID.randomUUID(), new Date(2), "service5a", "Service #5a", SecureString("password5a".toCharArray))
+    val pwd5a = DatabaseSpec.createPasswordEntry(4)
     val db6a = Database.addPassword(db5a, pwd5a)
-    val pwd3b = PasswordEntry(UUID.randomUUID(), new Date(2), "service3b", "Service #3b", SecureString("password3b".toCharArray))
+    val pwd3b = DatabaseSpec.createPasswordEntry(5)
     val db4b = Database.addPassword(db3, pwd3b)
-    val pwd4b = PasswordEntry(UUID.randomUUID(), new Date(2), "service4b", "Service #4b", SecureString("password4b".toCharArray))
+    val pwd4b = DatabaseSpec.createPasswordEntry(6)
     val db5b = Database.addPassword(db4b, pwd4b)
-    val pwd5b = PasswordEntry(UUID.randomUUID(), new Date(2), "service5b", "Service #5b", SecureString("password5b".toCharArray))
+    val pwd5b = DatabaseSpec.createPasswordEntry(7)
     val db6b = Database.addPassword(db5b, pwd5b)
 
     Database.fromVersion(db6b, db6b.versions(0)) === db6b
@@ -239,4 +257,8 @@ class DatabaseSpec extends Specification {
     Database.fromVersion(db6b, db6b.versions(4)) === db2
     Database.fromVersion(db6b, db6b.versions(5)) === db1
   }
+}
+
+object DatabaseSpec {
+  def createPasswordEntry(i: Int) = PasswordEntry(UUID.randomUUID(), new Date(i), s"pwd-$i", SecureString(s"pass-$i".toCharArray), s"Password $i", s"Description $i", s"user-$i", s"http://service$i.com/", Map.empty)
 }

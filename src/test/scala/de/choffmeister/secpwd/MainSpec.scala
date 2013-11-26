@@ -21,12 +21,12 @@ class MainSpec extends Specification {
     main.list(pp) === Nil
     val state1 = main.head
 
-    val pwd1 = main.add(pp, "gmail", "googlemail.com", Left(SecureString("pass".toCharArray)))
+    val pwd1 = main.add(pp, "gmail", Left(SecureString("pass".toCharArray)), "Google Mail", "", "user", "http://www.googlemail.com", Map.empty)
     pwd1.password.read(_.mkString === "pass")
     main.list(pp) === List(pwd1)
     val state2 = main.head
 
-    val pwd2 = main.add(pp, "amazon", "amazon.com", Right((PasswordCharacters(true, true, true, true), 16)))
+    val pwd2 = main.add(pp, "amazon", Right((PasswordCharacters(true, true, true, true), 16)), "Amazon", "", "user2", "amazon.com", Map.empty)
     pwd2.password.read(_.mkString must haveSize(16))
     main.list(pp) === List(pwd2, pwd1)
     val state3 = main.head

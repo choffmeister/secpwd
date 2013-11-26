@@ -11,16 +11,12 @@ import de.choffmeister.secpwd.security.Encryptor._
 import de.choffmeister.secpwd.security.RandomGenerator._
 import de.choffmeister.securestring.SecureString
 
-abstract class BaseEntry {
-  val id: UUID
-}
-
 case class Database(
   id: UUID,
   timeStamp: Date,
   versions: List[DatabaseVersion],
   passwords: List[PasswordEntry] = Nil
-) extends BaseEntry {
+) {
   def passwordById(id: UUID): Option[PasswordEntry] =
     passwords.find(_.id == id)
 
@@ -42,22 +38,17 @@ case class DatabaseVersion(
   passwordIds: List[UUID] = Nil
 )
 
-case class CustomEntry(
-  id: UUID,
-  key: String,
-  value: String
-) extends BaseEntry
-
 case class PasswordEntry(
   id: UUID,
   timeStamp: Date,
   key: String,
-  name: String,
   password: SecureString,
-  userName: String = "",
+  name: String = "",
   description: String = "",
-  customFields: List[CustomEntry] = Nil
-) extends BaseEntry
+  userName: String = "",
+  url: String = "",
+  customFields: Map[String, String] = Map.empty
+)
 
 case class DatabaseCryptoInfo(deriveIterations: Int, macSalt: Array[Byte], encSalt: Array[Byte], iv: Array[Byte])
 
@@ -254,23 +245,21 @@ object Database {
     output.writeInt32(version.passwordIds.length)
     version.passwordIds.foreach(output.writeUUID(_))
   }
-  
+
   def serializePasswordEnty(output: OutputStream, pwd: PasswordEntry): Unit = {
     output.writeUUID(pwd.id)
     output.writeDate(pwd.timeStamp)
     output.writeString(pwd.key)
-    output.writeString(pwd.name)
     output.writeSecureString(pwd.password)
-    output.writeString(pwd.userName)
+    output.writeString(pwd.name)
     output.writeString(pwd.description)
-    output.writeInt32(pwd.customFields.length)
-    pwd.customFields.foreach(serializeCustomEntry(output, _))
-  }
-
-  def serializeCustomEntry(output: OutputStream, cf: CustomEntry): Unit = {
-    output.writeUUID(cf.id)
-    output.writeString(cf.key)
-    output.writeString(cf.value)
+    output.writeString(pwd.userName)
+    output.writeString(pwd.url)
+    output.writeInt32(pwd.customFields.size)
+    for (cf <- pwd.customFields) {
+      output.writeString(cf._1)
+      output.writeString(cf._2)
+    }
   }
 
   def deserializeDatabase(bytes: Array[Byte]): Database = {
@@ -302,19 +291,12 @@ object Database {
       input.readUUID(),
       input.readDate(),
       input.readString(),
-      input.readString(),
       input.readSecureString(),
       input.readString(),
       input.readString(),
-      (1 to input.readInt32()).map(i => deserializeCustomEntry(input)).toList
-    )
-  }
-
-  def deserializeCustomEntry(input: InputStream): CustomEntry = {
-    CustomEntry(
-      input.readUUID(),
       input.readString(),
-      input.readString()
+      input.readString(),
+      (1 to input.readInt32()).map(i => (input.readString(), input.readString())).toMap
     )
   }
 

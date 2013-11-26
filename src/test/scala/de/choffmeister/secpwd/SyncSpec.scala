@@ -27,10 +27,10 @@ class SyncSpec extends Specification {
     Sync.synchronize(pp, localDir, remoteConnInfo, remoteDir) === db1
     main.current(pp) === db1
 
-    val pwd1 = main.add(pp, "gmail", "googlemail.com", Left(SecureString("pass".toCharArray)))
+    val pwd1 = main.add(pp, "gmail", Left(SecureString("pass".toCharArray)), "Google Mail", "", "user", "http://www.googlemail.com", Map.empty)
     val db2 = main.current(pp)
 
-    val pwd2 = main.add(pp, "gmail2", "googlemail.com2", Left(SecureString("pass2".toCharArray)))
+    val pwd2 = main.add(pp, "gmail2", Left(SecureString("pass2".toCharArray)), "Google Mail 2", "", "user2", "http://www.googlemail2.com", Map.empty)
     val db3 = main.current(pp)
 
     Sync.synchronize(pp, localDir, remoteConnInfo, remoteDir) === db3
@@ -45,7 +45,7 @@ class SyncSpec extends Specification {
     main.current(pp) === db3
 
     main.head = db2.id
-    val pwd3 = main.add(pp, "gmail3", "googlemail.com3", Left(SecureString("pass3".toCharArray)))
+    val pwd3 = main.add(pp, "gmail3", Left(SecureString("pass3".toCharArray)), "Google Mail 3", "", "user3", "http://www.googlemail3.com", Map.empty)
     val db4 = main.current(pp)
 
     db4.currentPasswords === List(pwd3, pwd1)

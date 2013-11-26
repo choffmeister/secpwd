@@ -34,13 +34,13 @@ class Main(val directory: File) {
     db.currentPasswords
   }
 
-  def add(passphrase: SecureString, key: String, name: String, password: Either[SecureString, (PasswordCharacters, Int)]): PasswordEntry = {
+  def add(passphrase: SecureString, key: String, password: Either[SecureString, (PasswordCharacters, Int)], name: String, description: String, userName: String, url: String, customFields: Map[String, String]): PasswordEntry = {
     val db1 = Database.deserialize(passphrase, path(head).bytes)
     val pwd = password match {
       case Left(pwd) => pwd
       case Right((chars, len)) => PasswordUtils.generate(len, chars)
     }
-    val entry = PasswordEntry(UUID.randomUUID(), new Date(), key, name, pwd)
+    val entry = PasswordEntry(UUID.randomUUID(), new Date(), key, pwd, name, description, userName, url, customFields)
     val db2 = Database.addPassword(db1, entry)
     path(db2.id).bytes = Database.serialize(passphrase, db2)
     head = db2.id
@@ -120,7 +120,7 @@ object Main {
               val special = InteractiveConsole.readWithDefault[Boolean]("Use special characters?", true, _.toBoolean)
               Right((PasswordCharacters(alphaLower, alphaUpper, numbers, special), length))
           }
-          passphrase(main.add(_, cli.add.key(), name, pwd))
+          passphrase(main.add(_, cli.add.key(), pwd, name, "", "", "", Map.empty))
           printSuccess("Added password")
         case Some(cli.remove) =>
           passphrase(main.remove(_, cli.remove.idOrKey()))
