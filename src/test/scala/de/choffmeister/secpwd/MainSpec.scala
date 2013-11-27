@@ -35,8 +35,8 @@ class MainSpec extends Specification {
     main.list(pp) === List(pwd2, pwd1)
     val state3 = main.head
 
-    main.show(pp, "gmail") === Some(pwd1)
-    main.show(pp, pwd2.id.toString) === Some(pwd2)
+    main.show(pp, "gmail") === pwd1
+    main.show(pp, pwd2.id.toString) === pwd2
 
     main.remove(pp, "gmail")
     main.list(pp) === List(pwd2)
@@ -46,15 +46,15 @@ class MainSpec extends Specification {
     main.list(pp) === Nil
     val state5 = main.head
 
-    main.head = state1
+    main.setHead(state1)
     main.list(pp) === Nil
-    main.head = state2
+    main.setHead(state2)
     main.list(pp) === List(pwd1)
-    main.head = state3
+    main.setHead(state3)
     main.list(pp) === List(pwd2, pwd1)
-    main.head = state4
+    main.setHead(state4)
     main.list(pp) === List(pwd2)
-    main.head = state5
+    main.setHead(state5)
     main.list(pp) === Nil
   }
 
@@ -144,13 +144,13 @@ class MainSpec extends Specification {
     cli.queueInput(Some("pp"))
     main.run(Array("init"))
 
+    cli.queueInput(Some("pp"))
     cli.queueInput(Some("Google Mail"))
     cli.queueInput(None)
     cli.queueInput(Some("https://googlemail.com/"))
     cli.queueInput(Some("invalid.user@googlemail.com"))
     cli.queueInput(Some("pass"))
     cli.queueInput(Some("pass"))
-    cli.queueInput(Some("pp"))
     main.run(Array("add", "gmail"))
     ok
   }
@@ -163,6 +163,7 @@ class MainSpec extends Specification {
     cli.queueInput(Some("pp"))
     main.run(Array("init"))
 
+    cli.queueInput(Some("pp"))
     cli.queueInput(Some("Google Mail"))
     cli.queueInput(None)
     cli.queueInput(Some("https://googlemail.com/"))
@@ -173,7 +174,6 @@ class MainSpec extends Specification {
     cli.queueInput(None)
     cli.queueInput(None)
     cli.queueInput(Some("false"))
-    cli.queueInput(Some("pp"))
     main.run(Array("add", "gmail"))
     ok
   }
@@ -186,6 +186,7 @@ class MainSpec extends Specification {
     cli.queueInput(Some("pp"))
     main.run(Array("init"))
 
+    cli.queueInput(Some("pp"))
     cli.queueInput(Some("Google Mail"))
     cli.queueInput(None)
     cli.queueInput(Some("https://googlemail.com/"))
@@ -196,7 +197,6 @@ class MainSpec extends Specification {
     cli.queueInput(None)
     cli.queueInput(None)
     cli.queueInput(Some("false"))
-    cli.queueInput(Some("pp"))
     main.run(Array("add", "gmail"))
 
     cli.queueInput(Some("pp"))
@@ -212,6 +212,7 @@ class MainSpec extends Specification {
     cli.queueInput(Some("pp"))
     main.run(Array("init"))
 
+    cli.queueInput(Some("pp"))
     cli.queueInput(Some("Google Mail"))
     cli.queueInput(None)
     cli.queueInput(Some("https://googlemail.com/"))
@@ -222,7 +223,6 @@ class MainSpec extends Specification {
     cli.queueInput(None)
     cli.queueInput(None)
     cli.queueInput(Some("false"))
-    cli.queueInput(Some("pp"))
     main.run(Array("add", "gmail"))
 
     cli.queueInput(Some("pp"))
@@ -238,6 +238,7 @@ class MainSpec extends Specification {
     cli.queueInput(Some("pp"))
     main.run(Array("init"))
 
+    cli.queueInput(Some("pp"))
     cli.queueInput(Some("Google Mail"))
     cli.queueInput(None)
     cli.queueInput(Some("https://googlemail.com/"))
@@ -248,7 +249,6 @@ class MainSpec extends Specification {
     cli.queueInput(None)
     cli.queueInput(None)
     cli.queueInput(Some("false"))
-    cli.queueInput(Some("pp"))
     main.run(Array("add", "gmail"))
 
     cli.queueInput(Some("pp"))
@@ -264,6 +264,7 @@ class MainSpec extends Specification {
     cli.queueInput(Some("pp"))
     main.run(Array("init"))
 
+    cli.queueInput(Some("pp"))
     cli.queueInput(Some("Google Mail"))
     cli.queueInput(None)
     cli.queueInput(Some("https://googlemail.com/"))
@@ -274,7 +275,6 @@ class MainSpec extends Specification {
     cli.queueInput(None)
     cli.queueInput(None)
     cli.queueInput(Some("false"))
-    cli.queueInput(Some("pp"))
     main.run(Array("add", "gmail"))
 
     cli.queueInput(Some("pp"))
@@ -290,6 +290,7 @@ class MainSpec extends Specification {
     cli.queueInput(Some("pp"))
     main.run(Array("init"))
 
+    cli.queueInput(Some("pp"))
     cli.queueInput(Some("Google Mail"))
     cli.queueInput(None)
     cli.queueInput(Some("https://googlemail.com/"))
@@ -300,12 +301,11 @@ class MainSpec extends Specification {
     cli.queueInput(None)
     cli.queueInput(None)
     cli.queueInput(Some("false"))
-    cli.queueInput(Some("pp"))
     main.run(Array("add", "gmail"))
 
-    cli.queueInput(Some("pass2"))
-    cli.queueInput(Some("pass2"))
     cli.queueInput(Some("pp"))
+    cli.queueInput(Some("pass2"))
+    cli.queueInput(Some("pass2"))
     main.run(Array("renew", "gmail"))
     ok
   }
@@ -322,6 +322,7 @@ class MainSpec extends Specification {
     cli.queueInput(Some("pp"))
     main.run(Array("init"))
 
+    cli.queueInput(Some("pp"))
     cli.queueInput(Some("Google Mail"))
     cli.queueInput(None)
     cli.queueInput(Some("https://googlemail.com/"))
@@ -332,7 +333,6 @@ class MainSpec extends Specification {
     cli.queueInput(None)
     cli.queueInput(None)
     cli.queueInput(Some("false"))
-    cli.queueInput(Some("pp"))
     main.run(Array("add", "gmail"))
 
     cli.queueInput(Some("pp"))

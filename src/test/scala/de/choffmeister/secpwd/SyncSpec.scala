@@ -41,12 +41,12 @@ class SyncSpec extends Specification {
     db3.currentPasswords === List(pwd2, pwd1)
     db3.passwords === List(pwd2, pwd1)
 
-    main.head = db1.id
+    main.setHead(db1.id)
 
     Sync.synchronize(pp, localDir, remoteConnInfo, remoteDir) === db3
     main.current(pp) === db3
 
-    main.head = db2.id
+    main.setHead(db2.id)
     val pwd3 = main.add(pp, "gmail3", Left(SecureString("pass3".toCharArray)), "Google Mail 3", "", "user3", "http://www.googlemail3.com", Map.empty)
     val db4 = main.current(pp)
 

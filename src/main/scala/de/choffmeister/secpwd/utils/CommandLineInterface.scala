@@ -6,6 +6,7 @@ trait CommandLineInterface {
   def read[T](label: String, conv: String => T): Option[T]
   def readWithDefault[T](label: String, default: T, conv: String => T): T
   def readSecureString(label: String): Option[SecureString]
+  def readSecureStringWithRepitition(label: String): Option[SecureString]
 
   def read(label: String): Option[String] = read(label, s => s)
   def readWithDefault(label: String, default: String): String = readWithDefault(label, default, s => s)
@@ -42,6 +43,24 @@ class NativeCommandLineInterface extends CommandLineInterface {
         case _ => None
       }
       case _ => throw new Exception("No console available")
+    }
+  }
+
+  def readSecureStringWithRepitition(label: String): Option[SecureString] = {
+    readSecureString(label) match {
+      case Some(ss1) =>
+        readSecureString("Repeat") match {
+          case Some(ss2) if ss1 == ss2 =>
+            ss2.wipe()
+            Some(ss1)
+          case Some(ss2) =>
+            ss2.wipe()
+            ss1.wipe()
+            throw new Exception("Repetition does not match")
+          case None =>
+            throw new Exception("Repetition does not match")
+        }
+      case _ => None
     }
   }
 
