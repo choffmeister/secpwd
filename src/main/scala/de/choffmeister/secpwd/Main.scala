@@ -10,6 +10,7 @@ import de.choffmeister.secpwd.security.PasswordCharacters
 import de.choffmeister.secpwd.utils.CommandLineInterface
 import de.choffmeister.secpwd.utils.NativeCommandLineInterface
 import de.choffmeister.secpwd.utils.RichFile._
+import de.choffmeister.secpwd.utils.Clipboard
 import de.choffmeister.securestring.SecureString
 
 class CommandLineArguments(val arguments: Seq[String]) extends ScallopConf(arguments) {
@@ -21,6 +22,9 @@ class CommandLineArguments(val arguments: Seq[String]) extends ScallopConf(argum
   val show = new Subcommand("show") {
     val idOrKey = trailArg[String]("id or key")
     val printPassword = opt[Boolean]("print-password", 'p')
+  }
+  val get = new Subcommand("get") {
+    val idOrKey = trailArg[String]("id or key")
   }
   val add = new Subcommand("add") {
     val key = trailArg[String]("key")
@@ -174,6 +178,14 @@ class Main(directory: File, cli: CommandLineInterface, config: Config = Config()
           case _ =>
             cli.printError(s"Password ${cla.show.idOrKey()} does not exist")
         }
+      case Some(cla.get) =>
+        passphrase(cli)(show(_, cla.show.idOrKey())) match {
+          case Some(pwd) =>
+            pwd.password.read(plain => Clipboard.put(plain.mkString))
+            cli.printSuccess(s"Copied password to clipboard")
+          case _ =>
+            cli.printError(s"Password ${cla.show.idOrKey()} does not exist")
+        }
       case Some(cla.add) =>
         val name = cli.readWithDefault("Name", cla.add.key())
         val description = cli.read("Description").orElse(Some("")).get
@@ -259,8 +271,11 @@ object Main {
     val main = new Main(directory, cli, conf)
     try {
       main.run(args)
+      System.exit(0)
     } catch {
-      case e: Throwable => cli.printError(e.getMessage)
+      case e: Throwable =>
+      cli.printError(e.getMessage)
+      System.exit(1)
     }
   }
 }
