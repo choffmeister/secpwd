@@ -4,7 +4,9 @@ scala:
   - 2.10.3
 before_script:
   - "ssh-keygen -t rsa -b 1024 -f ~/.ssh/id-test -N ''"
+  - "ssh-keygen -t rsa -b 1024 -f ~/.ssh/id-test2 -N 'password'"
   - "cat ~/.ssh/id-test.pub >> ~/.ssh/authorized_keys"
+  - "cat ~/.ssh/id-test2.pub >> ~/.ssh/authorized_keys"
 script:
   - "sbt ++$TRAVIS_SCALA_VERSION clean scct:test printCoverage"
 branches:

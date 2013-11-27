@@ -16,6 +16,7 @@ class SyncSpec extends Specification {
   "sync" in {
     val localDir = tmp
     val remoteConnInfo = SftpClientSpec.testConnInfo
+    val remoteConnInfo2 = SftpClientSpec.testConnInfo2
     val remoteDir = "/tmp/" + UUID.randomUUID().toString
     val pp = SecureString("password".toCharArray)
     val main = new Main(localDir, new NullCommandLineInterface())
@@ -64,7 +65,7 @@ class SyncSpec extends Specification {
     synced.currentPasswords === List(pwd2, pwd3, pwd1)
     synced.passwords === List(pwd3, pwd2, pwd1)
 
-    Sync.synchronize(pp, localDir, remoteConnInfo, remoteDir) === synced
+    Sync.synchronize(pp, localDir, remoteConnInfo2, remoteDir) === synced
     synced === main.current(pp)
 
     ok
