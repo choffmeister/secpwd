@@ -167,7 +167,7 @@ class Main(directory: File, cli: CommandLineInterface, config: Config = Config()
             if (cla.show.printPassword()) {
               cli.print("  Password: ")
               pwd.password.read(_.foreach(cli.print(_)))
-              cli.println()
+              cli.println("")
             } else {
               cli.println("  Password: ***")
             }
