@@ -28,6 +28,9 @@ class CommandLineArguments(val arguments: Seq[String]) extends ScallopConf(argum
   val remove = new Subcommand("remove") {
     val idOrKey = trailArg[String]("id or key")
   }
+  val renew = new Subcommand("renew") {
+    val key = trailArg[String]("key")
+  }
   val sync = new Subcommand("sync")
 }
 
@@ -83,6 +86,17 @@ class Main(directory: File, cli: CommandLineInterface, config: Config = Config()
       case Left(id) => Database.removePasswordById(db1, id)
       case Right(key) => Database.removePasswordByKey(db1, key)
     }
+    path(db2.id).bytes = Database.serialize(passphrase, db2)
+    head = db2.id
+  }
+
+  def renew(passphrase: SecureString, key: String, password: Either[SecureString, (PasswordCharacters, Int)]) {
+    val db1 = Database.deserialize(passphrase, path(head).bytes)
+    val pwd = password match {
+      case Left(pwd) => pwd
+      case Right((chars, len)) => PasswordUtils.generate(len, chars)
+    }
+    val db2 = Database.updatePassword(db1, key, pwd)
     path(db2.id).bytes = Database.serialize(passphrase, db2)
     head = db2.id
   }
@@ -184,6 +198,23 @@ class Main(directory: File, cli: CommandLineInterface, config: Config = Config()
       case Some(cla.remove) =>
         passphrase(cli)(remove(_, cla.remove.idOrKey()))
         cli.printSuccess("Removed password")
+      case Some(cla.renew) =>
+        val pwd = cli.readSecureString("Password") match {
+          case Some(pwd) =>
+            cli.readSecureString("Repeat") match {
+              case Some(pwdRepeat) if pwd == pwdRepeat => Left(pwd)
+              case _ => throw new Exception("Password repetition does not match")
+            }
+          case _ =>
+            val length = cli.readWithDefault[Int]("Password length", 32, _.toInt)
+            val alphaLower = cli.readWithDefault[Boolean]("Use lower alpha characters?", true, _.toBoolean)
+            val alphaUpper = cli.readWithDefault[Boolean]("Use upper alpha characters?", true, _.toBoolean)
+            val numbers = cli.readWithDefault[Boolean]("Use number characters?", true, _.toBoolean)
+            val special = cli.readWithDefault[Boolean]("Use special characters?", true, _.toBoolean)
+            Right((PasswordCharacters(alphaLower, alphaUpper, numbers, special), length))
+        }
+        passphrase(cli)(renew(_, cla.renew.key(), pwd))
+        cli.printSuccess("Updated password")
       case Some(cla.sync) =>
         config match {
           case Config(Some(syncConnInfo), Some(syncRemoteDir)) =>

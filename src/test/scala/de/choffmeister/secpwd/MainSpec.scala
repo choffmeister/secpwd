@@ -282,6 +282,34 @@ class MainSpec extends Specification {
     ok
   }
 
+  "secpwd renew - succeed" in {
+    val dir = tmp
+    val cli = new MockCommandLineInterface()
+    val main = new Main(dir, cli)
+    cli.queueInput(Some("pp"))
+    cli.queueInput(Some("pp"))
+    main.run(Array("init"))
+
+    cli.queueInput(Some("Google Mail"))
+    cli.queueInput(None)
+    cli.queueInput(Some("https://googlemail.com/"))
+    cli.queueInput(Some("invalid.user@googlemail.com"))
+    cli.queueInput(None)
+    cli.queueInput(Some("16"))
+    cli.queueInput(None)
+    cli.queueInput(None)
+    cli.queueInput(None)
+    cli.queueInput(Some("false"))
+    cli.queueInput(Some("pp"))
+    main.run(Array("add", "gmail"))
+
+    cli.queueInput(Some("pass2"))
+    cli.queueInput(Some("pass2"))
+    cli.queueInput(Some("pp"))
+    main.run(Array("renew", "gmail"))
+    ok
+  }
+
   "secpwd sync - succeed" in {
     val dir = tmp
     val cli = new MockCommandLineInterface()
