@@ -11,35 +11,52 @@ object Sync {
   def synchronize(passphrase: SecureString, localDir: File, remoteConnInfo: SshConnectionInfo, remoteDir: String): Database = {
     SftpClient.connect(remoteConnInfo) { session =>
       if (!session.exists(remoteDir, ".")) session.mkdir(remoteDir)
+      if (!localDir.exists()) localDir.mkdirs()
 
-      if (session.exists(remoteDir, "HEAD")) {
-        val remoteHead = UUID.fromString(streamStringOut(session.read(remoteDir, "HEAD", _)))
-        val remoteDb = Database.deserialize(passphrase, streamBytesOut(session.read(remoteDir, remoteHead.toString, _)))
-        val localHead = head(localDir)
-        val localDb = Database.deserialize(passphrase, path(localDir, localHead).bytes)
-        val mergedDb = Database.merge(localDb, localDb.versions(0), remoteDb, remoteDb.versions(0))
-        val mergedDbBytes = Database.serialize(passphrase, mergedDb)
+      val localExists = try {
+        head(localDir)
+        true
+      } catch {
+        case e: FileNotFoundException => false
+      }
+      val remoteExists = session.exists(remoteDir, "HEAD")
 
-        if (localDb != mergedDb) {
-          path(localDir, mergedDb.id).bytes = mergedDbBytes
-          setHead(localDir, mergedDb.id)
-        }
+      (localExists, remoteExists) match {
+        case (true, true) =>
+          val remoteHead = UUID.fromString(streamStringOut(session.read(remoteDir, "HEAD", _)))
+          val remoteDb = Database.deserialize(passphrase, streamBytesOut(session.read(remoteDir, remoteHead.toString, _)))
+          val localHead = head(localDir)
+          val localDb = Database.deserialize(passphrase, path(localDir, localHead).bytes)
+          val mergedDb = Database.merge(localDb, localDb.versions(0), remoteDb, remoteDb.versions(0))
+          val mergedDbBytes = Database.serialize(passphrase, mergedDb)
 
-        if (remoteDb != mergedDb) {
-          streamBytesIn(mergedDbBytes)(session.write(remoteDir, mergedDb.id.toString, _))
-          streamStringIn(mergedDb.id.toString)(session.write(remoteDir, "HEAD", _))
-        }
+          if (localDb != mergedDb) {
+            path(localDir, mergedDb.id).bytes = mergedDbBytes
+            setHead(localDir, mergedDb.id)
+          }
 
-        mergedDb
-      } else {
-        val localHead = head(localDir)
-        val localDbBytes = path(localDir, localHead).bytes
-        val localDb = Database.deserialize(passphrase, localDbBytes)
+          if (remoteDb != mergedDb) {
+            streamBytesIn(mergedDbBytes)(session.write(remoteDir, mergedDb.id.toString, _))
+            streamStringIn(mergedDb.id.toString)(session.write(remoteDir, "HEAD", _))
+          }
 
-        streamBytesIn(localDbBytes)(session.write(remoteDir, localDb.id.toString, _))
-        streamStringIn(localDb.id.toString)(session.write(remoteDir, "HEAD", _))
-
-        localDb
+          mergedDb
+        case (true, false) =>
+          val localHead = head(localDir)
+          val localDbBytes = path(localDir, localHead).bytes
+          val localDb = Database.deserialize(passphrase, localDbBytes)
+          streamBytesIn(localDbBytes)(session.write(remoteDir, localDb.id.toString, _))
+          streamStringIn(localDb.id.toString)(session.write(remoteDir, "HEAD", _))
+          localDb
+        case (false, true) =>
+          val remoteHead = UUID.fromString(streamStringOut(session.read(remoteDir, "HEAD", _)))
+          val remoteDbBytes = streamBytesOut(session.read(remoteDir, remoteHead.toString, _))
+          val remoteDb = Database.deserialize(passphrase, remoteDbBytes)
+          path(localDir, remoteDb.id).bytes = remoteDbBytes
+          setHead(localDir, remoteDb.id)
+          remoteDb
+        case (false, false) =>
+          throw new Exception("Neither a local nor a remote database exists")
       }
     }
   }

@@ -28,9 +28,10 @@ class CommandLineArguments(val arguments: Seq[String]) extends ScallopConf(argum
   val remove = new Subcommand("remove") {
     val idOrKey = trailArg[String]("id or key")
   }
+  val sync = new Subcommand("sync")
 }
 
-class Main(val directory: File, val cli: CommandLineInterface) {
+class Main(directory: File, cli: CommandLineInterface, config: Config = Config()) {
   if (!directory.exists()) directory.mkdirs()
 
   def exists: Boolean = {
@@ -183,6 +184,12 @@ class Main(val directory: File, val cli: CommandLineInterface) {
       case Some(cla.remove) =>
         passphrase(cli)(remove(_, cla.remove.idOrKey()))
         cli.printSuccess("Removed password")
+      case Some(cla.sync) =>
+        config match {
+          case Config(Some(syncConnInfo), Some(syncRemoteDir)) =>
+            passphrase(cli)(Sync.synchronize(_, directory, config.syncConnInfo.get, config.syncRemoteDir.get))
+          case _ => throw new Exception("You have not properly configured the remote to sync with")
+        }
       case _ =>
         // TODO print help on cli object
         cla.printHelp()
@@ -209,14 +216,15 @@ class Main(val directory: File, val cli: CommandLineInterface) {
 }
 
 object Main {
-  def directory = Option(System.getProperty("secpwd.database")) match {
+  lazy val directory = Option(System.getProperty("secpwd.database")) match {
     case Some(dir) => new File(dir)
     case _ => new File(System.getProperty("user.home"), ".secpwd")
   }
 
   def main(args: Array[String]): Unit = {
     val cli = new NativeCommandLineInterface()
-    val main = new Main(directory, cli)
+    val conf = Config.load(directory)
+    val main = new Main(directory, cli, conf)
     try {
       main.run(args)
     } catch {

@@ -12,6 +12,7 @@ import de.choffmeister.secpwd.utils.NullCommandLineInterface
 import de.choffmeister.securestring.SecureString
 import de.choffmeister.secpwd.utils.NullCommandLineInterface
 import de.choffmeister.secpwd.utils.MockCommandLineInterface
+import de.choffmeister.secpwd.utils.SftpClientSpec
 
 @RunWith(classOf[JUnitRunner])
 class MainSpec extends Specification {
@@ -278,6 +279,42 @@ class MainSpec extends Specification {
 
     cli.queueInput(Some("pp"))
     main.run(Array("remove", "gmail"))
+    ok
+  }
+
+  "secpwd sync - succeed" in {
+    val dir = tmp
+    val cli = new MockCommandLineInterface()
+    val conf = Config(
+      syncConnInfo = Some(SftpClientSpec.testConnInfo),
+      syncRemoteDir = Some("/tmp/" + UUID.randomUUID().toString)
+    )
+    val main = new Main(dir, cli, conf)
+    cli.queueInput(Some("pp"))
+    cli.queueInput(Some("pp"))
+    main.run(Array("init"))
+
+    cli.queueInput(Some("Google Mail"))
+    cli.queueInput(None)
+    cli.queueInput(Some("https://googlemail.com/"))
+    cli.queueInput(Some("invalid.user@googlemail.com"))
+    cli.queueInput(None)
+    cli.queueInput(Some("16"))
+    cli.queueInput(None)
+    cli.queueInput(None)
+    cli.queueInput(None)
+    cli.queueInput(Some("false"))
+    cli.queueInput(Some("pp"))
+    main.run(Array("add", "gmail"))
+
+    cli.queueInput(Some("pp"))
+    main.run(Array("remove", "gmail"))
+    
+    cli.queueInput(Some("pp"))
+    main.run(Array("sync"))
+
+    cli.queueInput(Some("pp"))
+    main.run(Array("sync"))
     ok
   }
 
