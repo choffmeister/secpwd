@@ -190,6 +190,7 @@ class Main(directory: File, cli: CommandLineInterface, config: Config = Config()
             passphrase(cli)(Sync.synchronize(_, directory, config.syncConnInfo.get, config.syncRemoteDir.get))
           case _ => throw new Exception("You have not properly configured the remote to sync with")
         }
+        cli.printSuccess("Synchronized password store with remote")
       case _ =>
         // TODO print help on cli object
         cla.printHelp()
