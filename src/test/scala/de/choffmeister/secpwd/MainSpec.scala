@@ -341,6 +341,8 @@ class MainSpec extends Specification {
     cli.queueInput(Some("pp"))
     main.run(Array("sync"))
 
+    new File(main.directory, "HEAD").text = ""
+
     cli.queueInput(Some("pp"))
     main.run(Array("sync"))
     ok

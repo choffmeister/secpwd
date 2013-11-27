@@ -41,19 +41,21 @@ class CommandLineArguments(val arguments: Seq[String]) extends ScallopConf(argum
 class Main(val directory: File, val cli: CommandLineInterface, val config: Config = Config()) {
   if (!directory.exists()) directory.mkdirs()
 
-  def exists: Boolean = {
+  def hasCurrent: Boolean = {
     try {
       head
       true
     } catch {
       case e: FileNotFoundException => false
+      case e: IllegalArgumentException => false
     }
   }
-  def current(passphrase: SecureString): Database = Database.deserialize(passphrase, path(head).bytes)
+  def current(passphrase: SecureString): Database = Database.deserialize(passphrase, currentRaw)
   def setCurrent(db: Database, passphrase: SecureString): Unit = {
     path(db.id).bytes = Database.serialize(passphrase, db)
     setHead(db.id)
   }
+  def currentRaw: Array[Byte] = path(head).bytes
   def head: UUID = UUID.fromString(new File(directory, "HEAD").text.trim)
   def setHead(id: UUID): Unit = new File(directory, "HEAD").text = id.toString
   def path(id: UUID): File = new File(directory, id.toString)

@@ -33,7 +33,7 @@ object InitCommand extends Command {
   }
   
   def headless(main: Main, passphrase: SecureString): Database = {
-    if (main.exists) throw new Exception("Database alreay exists")
+    if (main.hasCurrent) throw new Exception("Database alreay exists")
 
     val db = Database.create()
     main.setCurrent(db, passphrase)
@@ -224,7 +224,7 @@ object SyncCommand extends Command {
   def headless(main: Main, passphrase: SecureString): Unit = {
     main.config match {
       case Config(Some(syncConnInfo), Some(syncRemoteDir)) =>
-        Sync.synchronize(passphrase, main.directory, main.config.syncConnInfo.get, main.config.syncRemoteDir.get)
+        Sync.synchronize(main, passphrase, main.config.syncConnInfo.get, main.config.syncRemoteDir.get)
       case _ => throw new Exception("You have not properly configured the remote to sync with")
     }
   }

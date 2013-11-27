@@ -8,31 +8,24 @@ import de.choffmeister.secpwd.utils.SftpClient
 import de.choffmeister.securestring.SecureString
 
 object Sync {
-  def synchronize(passphrase: SecureString, localDir: File, remoteConnInfo: SshConnectionInfo, remoteDir: String): Database = {
+  def synchronize(main: Main, passphrase: SecureString, remoteConnInfo: SshConnectionInfo, remoteDir: String): Database = {
     SftpClient.connect(remoteConnInfo) { session =>
       if (!session.exists(remoteDir, ".")) session.mkdir(remoteDir)
-      if (!localDir.exists()) localDir.mkdirs()
-
-      val localExists = try {
-        head(localDir)
-        true
-      } catch {
-        case e: FileNotFoundException => false
-      }
+      
+      val localExists = main.hasCurrent
       val remoteExists = session.exists(remoteDir, "HEAD")
 
       (localExists, remoteExists) match {
         case (true, true) =>
           val remoteHead = UUID.fromString(streamStringOut(session.read(remoteDir, "HEAD", _)))
           val remoteDb = Database.deserialize(passphrase, streamBytesOut(session.read(remoteDir, remoteHead.toString, _)))
-          val localHead = head(localDir)
-          val localDb = Database.deserialize(passphrase, path(localDir, localHead).bytes)
+          val localHead = main.head
+          val localDb = main.current(passphrase)
           val mergedDb = Database.merge(localDb, localDb.versions(0), remoteDb, remoteDb.versions(0))
           val mergedDbBytes = Database.serialize(passphrase, mergedDb)
 
           if (localDb != mergedDb) {
-            path(localDir, mergedDb.id).bytes = mergedDbBytes
-            setHead(localDir, mergedDb.id)
+            main.setCurrent(mergedDb, passphrase)
           }
 
           if (remoteDb != mergedDb) {
@@ -42,9 +35,9 @@ object Sync {
 
           mergedDb
         case (true, false) =>
-          val localHead = head(localDir)
-          val localDbBytes = path(localDir, localHead).bytes
-          val localDb = Database.deserialize(passphrase, localDbBytes)
+          val localHead = main.head
+          val localDbBytes = main.currentRaw
+          val localDb = main.current(passphrase)
           streamBytesIn(localDbBytes)(session.write(remoteDir, localDb.id.toString, _))
           streamStringIn(localDb.id.toString)(session.write(remoteDir, "HEAD", _))
           localDb
@@ -52,18 +45,13 @@ object Sync {
           val remoteHead = UUID.fromString(streamStringOut(session.read(remoteDir, "HEAD", _)))
           val remoteDbBytes = streamBytesOut(session.read(remoteDir, remoteHead.toString, _))
           val remoteDb = Database.deserialize(passphrase, remoteDbBytes)
-          path(localDir, remoteDb.id).bytes = remoteDbBytes
-          setHead(localDir, remoteDb.id)
+          main.setCurrent(remoteDb, passphrase)
           remoteDb
         case (false, false) =>
           throw new Exception("Neither a local nor a remote database exists")
       }
     }
   }
-
-  private def head(dir: File): UUID = UUID.fromString(new File(dir, "HEAD").text.trim)
-  private def setHead(dir: File, id: UUID): Unit = new File(dir, "HEAD").text = id.toString
-  private def path(dir: File, id: UUID): File = new File(dir, id.toString)
 
   private def streamStringIn(str: String)(inner: InputStream => Any): Unit = streamBytesIn(str.getBytes("UTF-8"))(inner)
   private def streamStringOut(inner: ByteArrayOutputStream => Any): String = new String(streamBytesOut(inner), "UTF-8")
