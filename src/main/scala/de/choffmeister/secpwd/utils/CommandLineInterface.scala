@@ -46,7 +46,7 @@ class NativeCommandLineInterface extends CommandLineInterface {
   }
 
   def print(content: Any) = System.out.print(content)
-  def println(content: Any) = System.out.print(content)
+  def println(content: Any) = System.out.println(content)
   def printInfo(label: String, message: String) = println(s"[${Console.BLUE}${label}${Console.RESET}] ${message}")
   def printSuccess(message: String) = println(s"[${Console.GREEN}success${Console.RESET}] ${message}")
   def printError(message: String) = println(s"[${Console.RED}error${Console.RESET}] ${message}")
