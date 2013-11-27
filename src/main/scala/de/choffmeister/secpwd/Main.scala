@@ -81,7 +81,28 @@ object Main {
       val cli = new CommandLineInterface(args)
       cli.subcommand match {
         case Some(cli.init) =>
-          passphrase(main.init(_))
+          val pp = InteractiveConsole.readSecureString("Passphrase") match {
+            case Some(pp) =>
+              InteractiveConsole.readSecureString("Repeat") match {
+                case Some(ppRepeat) if pp == ppRepeat =>
+                  ppRepeat.wipe()
+                  pp
+                case Some(ppRepeat) =>
+                  ppRepeat.wipe()
+                  pp.wipe()
+                  throw new Exception("Passphrase repetition does not match")
+                case None =>
+                  throw new Exception("Passphrase repetition does not match")
+              }
+            case _ => throw new Exception("You must provide a passphrase")
+          }
+
+          try {
+            main.init(pp)
+          } finally {
+            pp.wipe()
+          }
+
           printSuccess("Created new password store")
         case Some(cli.list) =>
           for (pwd <- passphrase(main.list(_)).sortWith(_.key < _.key)) {
@@ -128,8 +149,7 @@ object Main {
           val description = InteractiveConsole.read("Description").orElse(Some("")).get
           val url = InteractiveConsole.read("URL").orElse(Some("")).get
           val userName = InteractiveConsole.read("Username").orElse(Some("")).get
-          val pwdInteractive = InteractiveConsole.readSecureString("Password")
-          val pwd = pwdInteractive match {
+          val pwd = InteractiveConsole.readSecureString("Password") match {
             case Some(pwd) =>
               InteractiveConsole.readSecureString("Repeat") match {
                 case Some(pwdRepeat) if pwd == pwdRepeat => Left(pwd)
