@@ -2,7 +2,7 @@ package de.choffmeister.secpwd
 
 import java.util.Date
 import java.util.UUID
-import java.io.File
+import java.io.{File, FileNotFoundException}
 import org.rogach.scallop._
 import scala.language.reflectiveCalls
 import de.choffmeister.secpwd.security.PasswordUtils
@@ -14,7 +14,17 @@ import de.choffmeister.securestring.SecureString
 class Main(val directory: File) {
   if (!directory.exists()) directory.mkdirs()
 
+  def exists: Boolean = {
+    try {
+      head
+      true
+    } catch {
+      case e: FileNotFoundException => false
+    }
+  }
+
   def init(passphrase: SecureString): Database = {
+    if (exists) throw new Exception("Database alreay exists")
     val db = Database.create()
     path(db.id).bytes = Database.serialize(passphrase, db)
     head = db.id
