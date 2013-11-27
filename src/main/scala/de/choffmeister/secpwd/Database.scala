@@ -55,7 +55,7 @@ case class DatabaseCryptoInfo(deriveIterations: Int, macSalt: Array[Byte], encKe
 class DatabaseSerializationException(message: String) extends Exception(message)
 
 object Database {
-  val MAGIC_BYTES = Array[Byte](115, 99, 112, 100)
+  val MAGIC_BYTES = Array[Byte](115, 101, 99, 112, 119, 100)
   val VERSION = 1.toByte
 
   def create(): Database = {
@@ -327,7 +327,7 @@ object Database {
   def deserialize(passphrase: SecureString, bytes: Array[Byte]): Database = {
     val bs = new ByteArrayInputStream(bytes)
 
-    val magicbytes = bs.readBytesRaw(4)
+    val magicbytes = bs.readBytesRaw(6)
     if (!compareByteArrays(magicbytes, MAGIC_BYTES)) throw new DatabaseSerializationException("Invalid magic bytes")
     val version = bs.readInt8()
     if (version != VERSION) throw new DatabaseSerializationException("Invalid version")
