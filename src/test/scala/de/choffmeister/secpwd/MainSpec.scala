@@ -122,6 +122,165 @@ class MainSpec extends Specification {
     main.run(Array("init")) must throwA
   }
 
+  "secpwd init - fail due to double initialization" in {
+    val dir = tmp
+    val cli = new MockCommandLineInterface()
+    val main = new Main(dir, cli)
+    cli.queueInput(Some("pass"))
+    cli.queueInput(Some("pass"))
+    main.run(Array("init"))
+
+    cli.queueInput(Some("pass2"))
+    cli.queueInput(Some("pass2"))
+    main.run(Array("init")) must throwA
+  }
+
+  "secpwd add - succeed with custom password" in {
+    val dir = tmp
+    val cli = new MockCommandLineInterface()
+    val main = new Main(dir, cli)
+    cli.queueInput(Some("pp"))
+    cli.queueInput(Some("pp"))
+    main.run(Array("init"))
+
+    cli.queueInput(Some("Google Mail"))
+    cli.queueInput(None)
+    cli.queueInput(Some("https://googlemail.com/"))
+    cli.queueInput(Some("invalid.user@googlemail.com"))
+    cli.queueInput(Some("pass"))
+    cli.queueInput(Some("pass"))
+    cli.queueInput(Some("pp"))
+    main.run(Array("add", "gmail"))
+    ok
+  }
+
+  "secpwd add - succeed with generated password" in {
+    val dir = tmp
+    val cli = new MockCommandLineInterface()
+    val main = new Main(dir, cli)
+    cli.queueInput(Some("pp"))
+    cli.queueInput(Some("pp"))
+    main.run(Array("init"))
+
+    cli.queueInput(Some("Google Mail"))
+    cli.queueInput(None)
+    cli.queueInput(Some("https://googlemail.com/"))
+    cli.queueInput(Some("invalid.user@googlemail.com"))
+    cli.queueInput(None)
+    cli.queueInput(Some("16"))
+    cli.queueInput(None)
+    cli.queueInput(None)
+    cli.queueInput(None)
+    cli.queueInput(Some("false"))
+    cli.queueInput(Some("pp"))
+    main.run(Array("add", "gmail"))
+    ok
+  }
+
+  "secpwd list - succeed" in {
+    val dir = tmp
+    val cli = new MockCommandLineInterface()
+    val main = new Main(dir, cli)
+    cli.queueInput(Some("pp"))
+    cli.queueInput(Some("pp"))
+    main.run(Array("init"))
+
+    cli.queueInput(Some("Google Mail"))
+    cli.queueInput(None)
+    cli.queueInput(Some("https://googlemail.com/"))
+    cli.queueInput(Some("invalid.user@googlemail.com"))
+    cli.queueInput(None)
+    cli.queueInput(Some("16"))
+    cli.queueInput(None)
+    cli.queueInput(None)
+    cli.queueInput(None)
+    cli.queueInput(Some("false"))
+    cli.queueInput(Some("pp"))
+    main.run(Array("add", "gmail"))
+
+    cli.queueInput(Some("pp"))
+    main.run(Array("list"))
+    ok
+  }
+
+  "secpwd history - succeed" in {
+    val dir = tmp
+    val cli = new MockCommandLineInterface()
+    val main = new Main(dir, cli)
+    cli.queueInput(Some("pp"))
+    cli.queueInput(Some("pp"))
+    main.run(Array("init"))
+
+    cli.queueInput(Some("Google Mail"))
+    cli.queueInput(None)
+    cli.queueInput(Some("https://googlemail.com/"))
+    cli.queueInput(Some("invalid.user@googlemail.com"))
+    cli.queueInput(None)
+    cli.queueInput(Some("16"))
+    cli.queueInput(None)
+    cli.queueInput(None)
+    cli.queueInput(None)
+    cli.queueInput(Some("false"))
+    cli.queueInput(Some("pp"))
+    main.run(Array("add", "gmail"))
+
+    cli.queueInput(Some("pp"))
+    main.run(Array("history"))
+    ok
+  }
+
+  "secpwd show - succeed" in {
+    val dir = tmp
+    val cli = new MockCommandLineInterface()
+    val main = new Main(dir, cli)
+    cli.queueInput(Some("pp"))
+    cli.queueInput(Some("pp"))
+    main.run(Array("init"))
+
+    cli.queueInput(Some("Google Mail"))
+    cli.queueInput(None)
+    cli.queueInput(Some("https://googlemail.com/"))
+    cli.queueInput(Some("invalid.user@googlemail.com"))
+    cli.queueInput(None)
+    cli.queueInput(Some("16"))
+    cli.queueInput(None)
+    cli.queueInput(None)
+    cli.queueInput(None)
+    cli.queueInput(Some("false"))
+    cli.queueInput(Some("pp"))
+    main.run(Array("add", "gmail"))
+
+    cli.queueInput(Some("pp"))
+    main.run(Array("show", "gmail"))
+    ok
+  }
+
+  "secpwd remove - succeed" in {
+    val dir = tmp
+    val cli = new MockCommandLineInterface()
+    val main = new Main(dir, cli)
+    cli.queueInput(Some("pp"))
+    cli.queueInput(Some("pp"))
+    main.run(Array("init"))
+
+    cli.queueInput(Some("Google Mail"))
+    cli.queueInput(None)
+    cli.queueInput(Some("https://googlemail.com/"))
+    cli.queueInput(Some("invalid.user@googlemail.com"))
+    cli.queueInput(None)
+    cli.queueInput(Some("16"))
+    cli.queueInput(None)
+    cli.queueInput(None)
+    cli.queueInput(None)
+    cli.queueInput(Some("false"))
+    cli.queueInput(Some("pp"))
+    main.run(Array("add", "gmail"))
+
+    cli.queueInput(Some("pp"))
+    main.run(Array("remove", "gmail"))
+    ok
+  }
+
   def dropByte(bytes: Array[Byte], index: Int) = bytes.take(index) ++ bytes.drop(index + 1)
   def alterByte(bytes: Array[Byte], index: Int) = bytes.take(index) ++ Array[Byte](if (bytes(index) >= 0) -1 else 1) ++ bytes.drop(index + 1)
   def insertByte(bytes: Array[Byte], index: Int) = bytes.take(index) ++ Array[Byte](0) ++ bytes.drop(index)
