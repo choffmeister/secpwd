@@ -7,6 +7,7 @@ import java.io._
 import java.util.{UUID, Date}
 import de.choffmeister.securestring.SecureString
 import de.choffmeister.secpwd.utils.SftpClientSpec
+import de.choffmeister.secpwd.utils.NullCommandLineInterface
 
 @RunWith(classOf[JUnitRunner])
 class SyncSpec extends Specification {
@@ -17,7 +18,7 @@ class SyncSpec extends Specification {
     val remoteConnInfo = SftpClientSpec.testConnInfo
     val remoteDir = "/tmp/" + UUID.randomUUID().toString
     val pp = SecureString("password".toCharArray)
-    val main = new Main(localDir)
+    val main = new Main(localDir, new NullCommandLineInterface())
     main.init(pp)
     val db1 = main.current(pp)
 

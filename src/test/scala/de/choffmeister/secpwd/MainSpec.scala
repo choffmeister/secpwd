@@ -8,7 +8,10 @@ import java.io.EOFException
 import java.util.UUID
 import de.choffmeister.secpwd.security.PasswordCharacters
 import de.choffmeister.secpwd.utils.RichFile._
+import de.choffmeister.secpwd.utils.NullCommandLineInterface
 import de.choffmeister.securestring.SecureString
+import de.choffmeister.secpwd.utils.NullCommandLineInterface
+import de.choffmeister.secpwd.utils.MockCommandLineInterface
 
 @RunWith(classOf[JUnitRunner])
 class MainSpec extends Specification {
@@ -16,7 +19,7 @@ class MainSpec extends Specification {
 
   "init, add, remove, show and allow HEAD change" in {
     val pp = SecureString("password".toCharArray)
-    val main = new Main(tmp)
+    val main = new Main(tmp, new NullCommandLineInterface())
     main.init(pp)
     main.list(pp) === Nil
     val state1 = main.head
@@ -56,7 +59,7 @@ class MainSpec extends Specification {
 
   "detect manipulations of database" in {
     val pp = SecureString("password".toCharArray)
-    val main = new Main(tmp)
+    val main = new Main(tmp, new NullCommandLineInterface())
     val db = main.init(pp)
     main.list(pp) === Nil
 
@@ -82,7 +85,43 @@ class MainSpec extends Specification {
 
     ok
   }
-  
+
+  "secpwd init - succeed" in {
+    val dir = tmp
+    val cli = new MockCommandLineInterface()
+    val main = new Main(dir, cli)
+    cli.queueInput(Some("pass"))
+    cli.queueInput(Some("pass"))
+    main.run(Array("init"))
+    ok
+  }
+
+  "secpwd init - fail due to no passphrase" in {
+    val dir = tmp
+    val cli = new MockCommandLineInterface()
+    val main = new Main(dir, cli)
+    cli.queueInput(None)
+    main.run(Array("init")) must throwA
+  }
+
+  "secpwd init - fail due to no repitition" in {
+    val dir = tmp
+    val cli = new MockCommandLineInterface()
+    val main = new Main(dir, cli)
+    cli.queueInput(Some("pass"))
+    cli.queueInput(None)
+    main.run(Array("init")) must throwA
+  }
+
+  "secpwd init - fail due to repitition mismatch" in {
+    val dir = tmp
+    val cli = new MockCommandLineInterface()
+    val main = new Main(dir, cli)
+    cli.queueInput(Some("pass"))
+    cli.queueInput(Some("pass2"))
+    main.run(Array("init")) must throwA
+  }
+
   def dropByte(bytes: Array[Byte], index: Int) = bytes.take(index) ++ bytes.drop(index + 1)
   def alterByte(bytes: Array[Byte], index: Int) = bytes.take(index) ++ Array[Byte](if (bytes(index) >= 0) -1 else 1) ++ bytes.drop(index + 1)
   def insertByte(bytes: Array[Byte], index: Int) = bytes.take(index) ++ Array[Byte](0) ++ bytes.drop(index)
