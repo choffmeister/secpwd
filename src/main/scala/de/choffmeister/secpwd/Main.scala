@@ -14,7 +14,7 @@ import de.choffmeister.secpwd.utils.Clipboard
 import de.choffmeister.securestring.SecureString
 
 class CommandLineArguments(val arguments: Seq[String]) extends ScallopConf(arguments) {
-  version(s"secpwd v0.0.1 (c) 2013 Christian Hoffmeister <mail@choffmeister.de>")
+  version(s"secpwd v0.0.2 (c) 2013 Christian Hoffmeister <mail@choffmeister.de>")
 
   val init = new Subcommand("init")
   val list = new Subcommand("list")
