@@ -1,3 +1,5 @@
+import AssemblyKeys._
+
 name := "secpwd"
 
 organization := "de.choffmeister"
@@ -7,6 +9,8 @@ version := "0.0.1"
 scalaVersion := "2.10.3"
 
 scalacOptions := Seq("-unchecked", "-feature", "-deprecation", "-encoding", "utf8")
+
+mainClass := Some("de.choffmeister.secpwd.Main")
 
 resolvers += "maven.choffmeister.de" at "http://maven.choffmeister.de"
 
@@ -20,6 +24,8 @@ libraryDependencies ++= Seq(
 )
 
 testOptions in Test += Tests.Argument("junitxml", "console")
+
+assemblySettings
 
 packSettings
 
