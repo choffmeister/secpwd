@@ -1,8 +1,12 @@
 # secpwd [![Build Status](https://travis-ci.org/choffmeister/secpwd.png?branch=master)](https://travis-ci.org/choffmeister/secpwd)
 
-_secpwd_ provides a highly secure way to generate and store strong passwords for all your accounts. Unlike other tools _secpwd_ is a purely commandline base application.
+_secpwd_ provides a highly secure way to generate and store strong passwords for all your accounts. Unlike other tools _secpwd_ is a purely commandline base application. For a short overview on features:
 
-
+* Passwords a stored in a fully AES encrypted binary file.
+* Keys are derived from a passphrase via PBKDF2.
+* No entered password is ever lost. _secpwd_ maintains an eternal history of all passwords and all versions.
+* No written password file is ever overriden. _secpwd_ creates a totally new database file containing the whole history with new random seeds on every write operation.
+* Bi-directional synchronization of the database with three-way-merge via SFTP.
 
 #Usage
 
