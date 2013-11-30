@@ -37,7 +37,6 @@ object InitCommand extends Command {
 
     val db = Database.create()
     main.setCurrent(db, passphrase)
-    main.cli.printSuccess("Created new password store")
     db
   }
 }

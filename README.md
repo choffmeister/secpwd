@@ -4,6 +4,90 @@ _secpwd_ provides a highly secure way to generate and store strong passwords for
 
 
 
+#Usage
+
+The following shows a common workflow of creating a new database store, add a password with a self choosen password and afterwards update the password with a generated one. Note, that double curlies like `{{my-passphrase}}` stand for silently entered content.
+
+```bash
+$ secpwd init
+Passphrase: {{my-passphrase}}
+Repeat: {{my-passphrase}}
+[success] Created new password store
+```
+
+```bash
+$ secpwd list
+Passphrase: {{my-passphrase}}
+```
+
+```bash
+$ secpwd add gmail
+Passphrase: {{my-passphrase}}
+Name [gmail]: Google Mail
+Description:
+URL: https://googlemail.com/
+Username: invalid.user@googlemail.com
+Password: {{my-gmail-pass}}
+Repeat: {{my-gmail-pass}}
+[success] Added password
+```
+
+```bash
+$ secpwd list
+Passphrase: {{my-passphrase}}
+[gmail] Google Mail (73 bits) Sat Nov 30 15:33:14 CET 2013
+```
+
+```bash
+$ secpwd show gmail
+Passphrase: {{my-passphrase}}
+[gmail] Password information
+  Timestamp: Sat Nov 30 15:33:14 CET 2013
+  Name: Google Mail
+  Username: invalid.user@googlemail.com
+  URL: https://googlemail.com/
+  Strength: 73 bits
+  Password: ***
+```
+
+```bash
+$ secpwd renew gmail
+Passphrase: {{my-passphrase}}
+Password:
+Password length [32]: 24
+Use lower alpha characters? [true]:
+Use upper alpha characters? [true]:
+Use number characters? [true]:
+Use special characters? [true]: false
+[success] Updated password
+```
+
+```bash
+$ secpwd show gmail
+Passphrase: {{my-passphrase}}
+[gmail] Password information
+  Timestamp: Sat Nov 30 15:33:14 CET 2013
+  Name: Google Mail
+  Username: invalid.user@googlemail.com
+  URL: https://googlemail.com/
+  Strength: 143 bits
+  Password: ***
+```
+
+```bash
+$ secpwd show -p gmail
+Passphrase: {{pp}}
+[gmail] Password information
+  Timestamp: Sat Nov 30 15:40:01 CET 2013
+  Name: Google Mail
+  Username: invalid.user@googlemail.com
+  URL: https://googlemail.com/
+  Strength: 143 bits
+  Password: 9BN5zsRrwHnzEYKp0USD19MB
+```
+
+
+
 # Caution
 
 _secpwd_ is still alpha and not yet ready for production use. Feel free to try it out and contribute, but make sure that you do __not__ store important passwords solely in _secpwd_ by now.

@@ -348,6 +348,65 @@ class MainSpec extends Specification {
     ok
   }
 
+  "usage" in {
+    val dir = tmp
+    val cli = new MockCommandLineInterface()
+    val conf = Config(
+      syncConnInfo = Some(SftpClientSpec.testConnInfo),
+      syncRemoteDir = Some("/tmp/" + UUID.randomUUID().toString)
+    )
+    val main = new Main(dir, cli, conf)
+
+    cli.queueInput(Some("pp"))
+    cli.queueInput(Some("pp"))
+    cli.out.write("$ secpwd init\n")
+    main.run(Array("init"))
+
+    cli.queueInput(Some("pp"))
+    cli.out.write("$ secpwd list\n")
+    main.run(Array("list"))
+
+    cli.queueInput(Some("pp"))
+    cli.queueInput(Some("Google Mail"))
+    cli.queueInput(None)
+    cli.queueInput(Some("https://googlemail.com/"))
+    cli.queueInput(Some("invalid.user@googlemail.com"))
+    cli.queueInput(Some("my-gmail-pass"))
+    cli.queueInput(Some("my-gmail-pass"))
+    cli.out.write("$ secpwd add gmail\n")
+    main.run(Array("add", "gmail"))
+
+    cli.queueInput(Some("pp"))
+    cli.out.write("$ secpwd list\n")
+    main.run(Array("list"))
+
+    cli.queueInput(Some("pp"))
+    cli.out.write("$ secpwd show gmail\n")
+    main.run(Array("show", "gmail"))
+
+    cli.queueInput(Some("pp"))
+    cli.queueInput(None)
+    cli.queueInput(Some("24"))
+    cli.queueInput(None)
+    cli.queueInput(None)
+    cli.queueInput(None)
+    cli.queueInput(Some("false"))
+    cli.out.write("$ secpwd renew gmail\n")
+    main.run(Array("renew", "gmail"))
+
+    cli.queueInput(Some("pp"))
+    cli.out.write("$ secpwd show gmail\n")
+    main.run(Array("show", "gmail"))
+
+    cli.queueInput(Some("pp"))
+    cli.out.write("$ secpwd show -p gmail\n")
+    main.run(Array("show", "-p", "gmail"))
+
+    println(cli)
+
+    ok
+  }
+
   def dropByte(bytes: Array[Byte], index: Int) = bytes.take(index) ++ bytes.drop(index + 1)
   def alterByte(bytes: Array[Byte], index: Int) = bytes.take(index) ++ Array[Byte](if (bytes(index) >= 0) -1 else 1) ++ bytes.drop(index + 1)
   def insertByte(bytes: Array[Byte], index: Int) = bytes.take(index) ++ Array[Byte](0) ++ bytes.drop(index)
