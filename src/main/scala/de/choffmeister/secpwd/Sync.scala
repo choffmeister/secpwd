@@ -8,7 +8,7 @@ import de.choffmeister.secpwd.utils.SftpClient
 import de.choffmeister.securestring.SecureString
 
 object Sync {
-  def synchronize(main: Main, passphrase: SecureString, remoteConnInfo: SshConnectionInfo, remoteDir: String): Database = {
+  def synchronize(main: Main, passphrase: SecureString, remoteConnInfo: SshConnectionInfo, remoteDir: String): (Option[Database], Option[Database], Database) = {
     SftpClient.connect(remoteConnInfo) { session =>
       if (!session.exists(remoteDir, ".")) session.mkdir(remoteDir)
       
@@ -33,20 +33,20 @@ object Sync {
             streamStringIn(mergedDb.id.toString)(session.write(remoteDir, "HEAD", _))
           }
 
-          mergedDb
+          (Some(localDb), Some(remoteDb), mergedDb)
         case (true, false) =>
           val localHead = main.head
           val localDbBytes = main.currentRaw
           val localDb = main.current(passphrase)
           streamBytesIn(localDbBytes)(session.write(remoteDir, localDb.id.toString, _))
           streamStringIn(localDb.id.toString)(session.write(remoteDir, "HEAD", _))
-          localDb
+          (Some(localDb), None, localDb)
         case (false, true) =>
           val remoteHead = UUID.fromString(streamStringOut(session.read(remoteDir, "HEAD", _)))
           val remoteDbBytes = streamBytesOut(session.read(remoteDir, remoteHead.toString, _))
           val remoteDb = Database.deserialize(passphrase, remoteDbBytes)
           main.setCurrent(remoteDb, passphrase)
-          remoteDb
+          (None, Some(remoteDb), remoteDb)
         case (false, false) =>
           throw new Exception("Neither a local nor a remote database exists")
       }

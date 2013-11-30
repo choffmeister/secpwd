@@ -217,11 +217,40 @@ object RenewCommand {
 
 object SyncCommand extends Command {
   def apply(main: Main, passphrase: SecureString): Unit = {
-    headless(main, passphrase)
-    main.cli.printSuccess("Synchronized password store with remote")
+    headless(main, passphrase) match {
+      case (Some(local), Some(remote), merged) =>
+        if (local == merged && remote == merged) main.cli.printSuccess("Already up-to-date")
+        else {
+          val diff1 = Database.diff(merged, local.versions(0), merged.versions(0))
+          val diff2 = Database.diff(merged, remote.versions(0), merged.versions(0))
+
+          for (change <- diff1) {
+            change match {
+              case (key, (None, Some(_))) => main.cli.printInfo(key, "Added locally")
+              case (key, (Some(_), None)) => main.cli.printInfo(key, "Removed locally")
+              case (key, (Some(_), Some(_))) => main.cli.printInfo(key, "Modified locally")
+              case (key, (None, None)) => throw new Exception("Impossible case")
+            }
+          }
+          for (change <- diff2) {
+            change match {
+              case (key, (None, Some(_))) => main.cli.printInfo(key, "Added at remote")
+              case (key, (Some(_), None)) => main.cli.printInfo(key, "Removed at remote")
+              case (key, (Some(_), Some(_))) => main.cli.printInfo(key, "Modified at remote")
+              case (key, (None, None)) => throw new Exception("Impossible case")
+            }
+          }
+          main.cli.printSuccess("Synchronized")
+        }
+      case (Some(local), None, _) =>
+        main.cli.printSuccess("Copied local to remote")
+      case (None, Some(remote), _) =>
+        main.cli.printSuccess("Copied remote to local")
+      case (None, None, _) => throw new Exception("Impossible case")
+    }
   }
 
-  def headless(main: Main, passphrase: SecureString): Unit = {
+  def headless(main: Main, passphrase: SecureString): (Option[Database], Option[Database], Database) = {
     main.config match {
       case Config(Some(syncConnInfo), Some(syncRemoteDir)) =>
         Sync.synchronize(main, passphrase, main.config.syncConnInfo.get, main.config.syncRemoteDir.get)

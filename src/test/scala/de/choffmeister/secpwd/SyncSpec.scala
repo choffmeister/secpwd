@@ -23,10 +23,10 @@ class SyncSpec extends Specification {
     main.init(pp)
     val db1 = main.current(pp)
 
-    Sync.synchronize(main, pp, remoteConnInfo, remoteDir) === db1
+    Sync.synchronize(main, pp, remoteConnInfo, remoteDir) === (Some(db1), None, db1)
     main.current(pp) === db1
 
-    Sync.synchronize(main, pp, remoteConnInfo, remoteDir) === db1
+    Sync.synchronize(main, pp, remoteConnInfo, remoteDir) === (Some(db1), Some(db1), db1)
     main.current(pp) === db1
 
     val pwd1 = main.add(pp, "gmail", Left(SecureString("pass".toCharArray)), "Google Mail", "", "user", "http://www.googlemail.com", Map.empty)
@@ -35,7 +35,7 @@ class SyncSpec extends Specification {
     val pwd2 = main.add(pp, "gmail2", Left(SecureString("pass2".toCharArray)), "Google Mail 2", "", "user2", "http://www.googlemail2.com", Map.empty)
     val db3 = main.current(pp)
 
-    Sync.synchronize(main, pp, remoteConnInfo, remoteDir) === db3
+    Sync.synchronize(main, pp, remoteConnInfo, remoteDir) === (Some(db3), Some(db1), db3)
     main.current(pp) === db3
 
     db3.currentPasswords === List(pwd2, pwd1)
@@ -43,7 +43,7 @@ class SyncSpec extends Specification {
 
     main.setHead(db1.id)
 
-    Sync.synchronize(main, pp, remoteConnInfo, remoteDir) === db3
+    Sync.synchronize(main, pp, remoteConnInfo, remoteDir) === (Some(db1), Some(db3), db3)
     main.current(pp) === db3
 
     main.setHead(db2.id)
@@ -55,19 +55,14 @@ class SyncSpec extends Specification {
 
     val synced = Sync.synchronize(main, pp, remoteConnInfo, remoteDir)
 
-    synced !== db1
-    synced !== db2
-    synced !== db3
-    synced !== db4
-    synced === main.current(pp)
+    synced._3 !== db1
+    synced._3 !== db2
+    synced._3 !== db3
+    synced._3 !== db4
+    synced._3 === main.current(pp)
 
     // TODO check why order in currentPasswords and passwords is different
-    synced.currentPasswords === List(pwd2, pwd3, pwd1)
-    synced.passwords === List(pwd3, pwd2, pwd1)
-
-    Sync.synchronize(main, pp, remoteConnInfo2, remoteDir) === synced
-    synced === main.current(pp)
-
-    ok
+    synced._3.currentPasswords === List(pwd2, pwd3, pwd1)
+    synced._3.passwords === List(pwd3, pwd2, pwd1)
   }
 }
