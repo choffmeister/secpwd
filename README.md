@@ -80,7 +80,7 @@ Passphrase: {{my-passphrase}}
 
 ```bash
 $ secpwd show -p gmail
-Passphrase: {{pp}}
+Passphrase: {{my-passphrase}}
 [gmail] Password information
   Timestamp: Sat Nov 30 15:40:01 CET 2013
   Name: Google Mail
