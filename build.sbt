@@ -12,7 +12,7 @@ scalacOptions := Seq("-unchecked", "-feature", "-deprecation", "-encoding", "utf
 
 mainClass := Some("de.choffmeister.secpwd.Main")
 
-resolvers += "maven.choffmeister.de" at "http://maven.choffmeister.de"
+resolvers += "repo.choffmeister.de" at "http://repo.choffmeister.de/maven2"
 
 libraryDependencies ++= Seq(
   "commons-codec" % "commons-codec" % "1.8",
